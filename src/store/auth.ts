@@ -1,14 +1,25 @@
 
-import { create } from 'zustand'
-type User = { email: string } | null
-type State = { user: User; token: string | null }
-type Actions = { login:(email:string,token:string)=>void; logout:()=>void }
-const KEY='auth_v1'
-function read(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null') }catch{ return null } }
-function write(d:any){ localStorage.setItem(KEY, JSON.stringify(d)) }
-export const useAuth = create<State & Actions>((set)=> ({
-  user: read()?.user ?? null, token: read()?.token ?? null,
-  login:(email,token)=> set(()=>{ const n={user:{email},token}; write(n); return n }),
-  logout:()=> set(()=>{ const n={user:null, token:null}; write(n); return n })
-}))
-export function getToken(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null')?.token ?? null }catch{ return null } }
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+type Role = "user" | "admin";
+type User = { id: string; email: string; role: Role };
+
+type AuthState = {
+  user: User | null;
+  token: string | null;
+  login: (u: User, t: string) => void;
+  logout: () => void;
+};
+
+export const useAuth = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      login: (u, t) => set({ user: u, token: t }),
+      logout: () => set({ user: null, token: null }),
+    }),
+    { name: "auth-store" }
+  )
+);

@@ -1,77 +1,48 @@
-import { NavLink, Route, Routes } from "react-router-dom";
-import ProductsPage from "@/pages/Products";
-import CartPage from "@/pages/Cart";
-import AdminProductsPage from "@/pages/AdminProducts";
-import LoginPage from "@/pages/Login";
-import { useAuth } from "@/store/auth";
-import "./styles.css";
 
-function PrivateRoute({ children }: { children: JSX.Element }) {
-  const { token } = useAuth();
-  return token ? children : <LoginPage />;
-}
+import "./styles/global.css";
+import Header from "@/components/Header";
+import ProtectedRoute from "@/routes/ProtectedRoute";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import AdminDashboard from "@/pages/AdminDashboard";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-function AuthButtons() {
-  const { user, logout, token } = useAuth();
-  if (!token) return <></>;
+function HomePage() {
   return (
-    <div className="row" style={{ gap: 8 }}>
-      <span className="badge">{user?.email}</span>
-      <button className="btn ghost" onClick={logout}>
-        Çıkış
-      </button>
+    <div style={{maxWidth:1120, margin:"24px auto", padding:"0 16px"}}>
+      <h1>Mağaza</h1>
+      <p>Ürünler burada listelenecek.</p>
     </div>
   );
+}
+function CartPage() {
+  return (
+    <div style={{maxWidth:1120, margin:"24px auto", padding:"0 16px"}}>
+      <h1>Sepet</h1>
+      <p>Sepet sayfası.</p>
+    </div>
+  );
+}
+function NotFound() {
+  return <div style={{padding:24}}>Sayfa bulunamadı.</div>;
 }
 
 export default function App() {
   return (
-    <>
-      <header className="nav container">
-        <div className="brand">
-          <span className="dot"></span> Mini E-Commerce
-        </div>
-        <nav className="nav-links">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) => (isActive ? "active" : "")}
-          >
-            Ürünler
-          </NavLink>
-          <NavLink
-            to="/cart"
-            className={({ isActive }) => (isActive ? "active" : "")}
-          >
-            Sepet
-          </NavLink>
-          <NavLink
-            to="/admin"
-            className={({ isActive }) => (isActive ? "active" : "")}
-          >
-            Admin
-          </NavLink>
-          <AuthButtons />
-        </nav>
-      </header>
+    <BrowserRouter>
+      <Header />
       <Routes>
-        <Route path="/" element={<ProductsPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route
-          path="/admin"
-          element={
-            <PrivateRoute>
-              <AdminProductsPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<HomePage/>} />
+        <Route path="/cart" element={<CartPage/>} />
+        <Route path="/login" element={<Login/>} />
+        <Route path="/register" element={<Register/>} />
+        <Route path="/admin" element={
+          <ProtectedRoute role="admin">
+            <AdminDashboard/>
+          </ProtectedRoute>
+        } />
+        <Route path="*" element={<NotFound/>} />
       </Routes>
-      <footer className="container">
-        <div className="muted">
-          Demo • React + Vite + TS + Zustand + Express + JWT
-        </div>
-      </footer>
-    </>
+    </BrowserRouter>
   );
 }
