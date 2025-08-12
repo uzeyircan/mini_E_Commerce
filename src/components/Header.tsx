@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
 import { Link, NavLink } from "react-router-dom";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/store/auth";
@@ -10,6 +14,7 @@ export default function Header() {
   return (
     <header className="hdr">
       <div className="hdr__inner">
+<<<<<<< HEAD
         <Link to="/" className="logo">
           miniCommerce
         </Link>
@@ -22,32 +27,53 @@ export default function Header() {
             <NavLink to="/admin" className="nav__link">
               Admin Panel
             </NavLink>
+=======
+        <Link to="/" className="logo">miniCommerce</Link>
+
+        <nav className="nav">
+          <NavLink to="/" className="nav__link">Mağaza</NavLink>
+          {user?.role === "admin" && (
+            <NavLink to="/admin" className="nav__link">Admin Panel</NavLink>
+>>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
           )}
         </nav>
 
         <div className="hdr__right">
           {!user && (
             <div className="auth">
+<<<<<<< HEAD
               <Link to="/register" className="btn btn--ghost">
                 Kayıt Ol
               </Link>
               <Link to="/login" className="btn btn--primary">
                 Giriş Yap
               </Link>
+=======
+              <Link to="/register" className="btn btn--ghost">Kayıt Ol</Link>
+              <Link to="/login" className="btn btn--primary">Giriş Yap</Link>
+>>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
             </div>
           )}
           {user && (
             <div className="auth auth--in">
               <span className="userchip">{user.email}</span>
+<<<<<<< HEAD
               <button className="btn btn--ghost" onClick={logout}>
                 Çıkış
               </button>
+=======
+              <button className="btn btn--ghost" onClick={logout}>Çıkış</button>
+>>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
             </div>
           )}
 
           <Link to="/cart" className="cart" aria-label="Sepet">
             <svg className="cart__icon" viewBox="0 0 24 24" aria-hidden>
+<<<<<<< HEAD
               <path d="M7 4h-2l-1 2v2h2l3.6 7.59-1.35 2.44A2 2 0 0 0 10 20h9v-2h-8.42a.25.25 0 0 1-.22-.37L11.1 16h6.55a2 2 0 0 0 1.79-1.11l3.54-7.11A1 1 0 0 0 21 6H7z" />
+=======
+              <path d="M7 4h-2l-1 2v2h2l3.6 7.59-1.35 2.44A2 2 0 0 0 10 20h9v-2h-8.42a.25.25 0 0 1-.22-.37L11.1 16h6.55a2 2 0 0 0 1.79-1.11l3.54-7.11A1 1 0 0 0 21 6H7z"/>
+>>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
             </svg>
             {count > 0 && <span className="cart__badge">{count}</span>}
           </Link>
