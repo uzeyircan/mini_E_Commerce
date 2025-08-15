@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/store/cart";
-import { useProducts } from "@/store/product"; // varsa görsel göstermek için
+import { useProducts } from "@/store/product";
+import { useFavorites, Fav } from "@/store/favorites";
 
 export default function CartPage() {
   const { items, increase, decrease, setQty, remove, removeMany } = useCart();
-  const { items: products } = useProducts(); // opsiyonel (image için)
-  const productMap = useMemo(() => {
-    const m = new Map(products.map((p) => [p.id, p]));
-    return m;
-  }, [products]);
+  const { items: products } = useProducts(); // görsel için
+  const productMap = useMemo(
+    () => new Map(products.map((p) => [p.id, p])),
+    [products]
+  );
 
-  // Seçim durumu: varsayılan hepsi seçili
+  // --- Seçim mantığı ---
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const next: Record<string, boolean> = {};
@@ -20,21 +21,57 @@ export default function CartPage() {
   }, [items.length]);
 
   const allChecked = items.length > 0 && items.every((i) => selected[i.id]);
+  const anyChecked = items.some((i) => selected[i.id]);
   const toggleAll = (checked: boolean) => {
     const next: Record<string, boolean> = {};
     items.forEach((i) => (next[i.id] = checked));
     setSelected(next);
   };
 
+  // indeterminate görseli
+  const allRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (allRef.current) {
+      allRef.current.indeterminate = anyChecked && !allChecked;
+    }
+  }, [anyChecked, allChecked]);
+
   const selectedItems = items.filter((i) => selected[i.id]);
   const selectedTotal = selectedItems.reduce((s, i) => s + i.price * i.qty, 0);
 
+  // --- Favoriler STORE ---
+  const favItems = useFavorites((s) => s.items);
+  const addFav = useFavorites((s) => s.add);
+  const removeFav = useFavorites((s) => s.remove);
+
+  // --- Kaldırma modalı ---
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const openConfirm = (id: string) => setConfirmId(id);
+  const closeConfirm = () => setConfirmId(null);
+
+  const handleRemove = (id: string, alsoFavorite: boolean) => {
+    const ci = items.find((x) => x.id === id);
+    if (ci) {
+      const p = productMap.get(ci.id);
+      if (alsoFavorite) {
+        addFav({
+          id: ci.id,
+          title: ci.title,
+          price: ci.price,
+          image: p?.image,
+        });
+      }
+      remove(ci.id);
+    }
+    closeConfirm();
+  };
+
+  // Satın alma (seçilenleri)
   const onPurchase = async () => {
     if (selectedItems.length === 0) {
       alert("Satın almak için en az bir ürünü seçin.");
       return;
     }
-    // TODO: Backend ödeme entegrasyonu
     removeMany(selectedItems.map((i) => i.id));
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
@@ -44,9 +81,15 @@ export default function CartPage() {
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
         <h1>Sepet</h1>
         <p style={{ color: "#6b7280" }}>Sepetiniz boş.</p>
+        <FavoritesSection favs={favItems} removeFav={removeFav} />
       </div>
     );
   }
+
+  const confirmItem = confirmId
+    ? items.find((i) => i.id === confirmId)
+    : undefined;
+  const confirmImage = confirmId ? productMap.get(confirmId)?.image : undefined;
 
   return (
     <div
@@ -72,31 +115,20 @@ export default function CartPage() {
       >
         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input
+            ref={allRef}
             type="checkbox"
             checked={allChecked}
             onChange={(e) => toggleAll(e.target.checked)}
+            aria-label="Tüm ürünleri seç"
           />
-          <button className="btn btn--ghost">
-            <span
-              style={{
-                padding: 15,
-              }}
-            >
-              Tümünü seç
-            </span>
-          </button>
+          <span>Tümünü seç</span>
         </label>
 
-        {/* Tümü seçiliyken göster */}
         {allChecked && (
           <button
             className="btn btn--ghost"
             onClick={() => removeMany(items.map((i) => i.id))}
-            style={{
-              borderColor: "#ef4444",
-              color: "#b91c1c",
-              marginLeft: 8,
-            }}
+            style={{ borderColor: "#ef4444", color: "#b91c1c", marginLeft: 8 }}
             aria-label="Tümünü Kaldır"
             title="Sepetteki tüm ürünleri kaldır"
           >
@@ -128,7 +160,7 @@ export default function CartPage() {
                 <th>Fiyat</th>
                 <th>Adet</th>
                 <th>Ara Toplam</th>
-                <th style={{ width: 100 }}></th>
+                <th style={{ width: 160 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -149,6 +181,7 @@ export default function CartPage() {
                         aria-label="Ürünü seç"
                       />
                     </td>
+
                     <td
                       style={{
                         padding: "10px 12px",
@@ -178,7 +211,9 @@ export default function CartPage() {
                         )}
                       </div>
                     </td>
+
                     <td>{i.price.toFixed(2)} ₺</td>
+
                     <td>
                       <div
                         style={{
@@ -219,11 +254,13 @@ export default function CartPage() {
                         </button>
                       </div>
                     </td>
+
                     <td>{(i.price * i.qty).toFixed(2)} ₺</td>
+
                     <td>
                       <button
                         className="btn btn--primary"
-                        onClick={() => remove(i.id)}
+                        onClick={() => setConfirmId(i.id)}
                       >
                         Kaldır
                       </button>
@@ -253,6 +290,148 @@ export default function CartPage() {
         >
           Satın Al
         </button>
+      </div>
+
+      {/* Favoriler bölümü */}
+      <FavoritesSection favs={favItems} removeFav={removeFav} />
+
+      {/* Kaldırma Modalı */}
+      {confirmId && (
+        <ConfirmRemoveModal
+          title={items.find((i) => i.id === confirmId)?.title || ""}
+          price={items.find((i) => i.id === confirmId)?.price || 0}
+          image={productMap.get(confirmId)?.image}
+          onClose={() => setConfirmId(null)}
+          onRemove={() => handleRemove(confirmId, false)}
+          onRemoveAndFav={() => handleRemove(confirmId, true)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FavoritesSection({
+  favs,
+  removeFav,
+}: {
+  favs: Record<string, Fav>;
+  removeFav: (id: string) => void;
+}) {
+  const list = Object.values(favs);
+  if (list.length === 0) return null;
+
+  return (
+    <div className="card" style={{ display: "grid", gap: 12 }}>
+      <h2 style={{ margin: 0 }}>Favoriler</h2>
+      <div style={{ display: "grid", gap: 12 }}>
+        {list.map((f) => (
+          <div
+            key={f.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              borderTop: "1px solid #e5e7eb",
+              paddingTop: 12,
+            }}
+          >
+            {f.image && (
+              <img
+                src={f.image}
+                alt=""
+                style={{
+                  width: 48,
+                  height: 48,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>{f.title}</div>
+              <div style={{ color: "#111" }}>{f.price.toFixed(2)} ₺</div>
+            </div>
+            <button
+              className="btn btn--primary"
+              onClick={() => removeFav(f.id)}
+            >
+              Kaldır
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmRemoveModal({
+  title,
+  price,
+  image,
+  onClose,
+  onRemove,
+  onRemoveAndFav,
+}: {
+  title: string;
+  price: number;
+  image?: string;
+  onClose: () => void;
+  onRemove: () => void;
+  onRemoveAndFav: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="modal__backdrop"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          {image && (
+            <img
+              src={image}
+              alt=""
+              style={{
+                width: 56,
+                height: 56,
+                objectFit: "cover",
+                borderRadius: 8,
+              }}
+            />
+          )}
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
+            <div style={{ color: "#111" }}>{price.toFixed(2)} ₺</div>
+          </div>
+        </div>
+        <p style={{ marginTop: 12, color: "#374151" }}>
+          Bu ürünü kaldırmak istiyor musunuz?
+        </p>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            justifyContent: "flex-end",
+            marginTop: 8,
+          }}
+        >
+          <button className="btn btn--ghost" onClick={onClose}>
+            Vazgeç
+          </button>
+          <button className="btn btn--ghost" onClick={onRemove}>
+            Kaldır
+          </button>
+          <button className="btn btn--primary" onClick={onRemoveAndFav}>
+            Kaldır ve Favorilere Ekle
+          </button>
+        </div>
       </div>
     </div>
   );

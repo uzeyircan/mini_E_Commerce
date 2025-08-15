@@ -114,6 +114,7 @@ header.nav {
 .btn:active {
   transform: translateY(1px);
 }
+
 .btn.ghost {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -164,4 +165,35 @@ footer {
 .card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s;
+}
+.button-bounce {
+  animation: bounce 0.3s ease;
+}
+@keyframes bounce {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45); /* koyu blur */
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.modal {
+  width: min(520px, 92vw);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 16px;
 }

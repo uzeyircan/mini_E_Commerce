@@ -1,42 +1,35 @@
-<<<<<<< HEAD
+// src/routes/ProtectedRoute.tsx
+import { useEffect, ReactElement } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/store/auth";
-import { useEffect } from "react";
 
-export default function ProtectedRoute({
-  children,
-  role,
-  message,
-}: {
-  children: JSX.Element;
+type Props = {
+  children: ReactElement;
   role?: "admin" | "user";
-  message?: string;
-}) {
+  message?: string; // giriş yoksa gösterilecek uyarı
+};
+
+export default function ProtectedRoute({ children, role, message }: Props) {
   const { user } = useAuth();
   const loc = useLocation();
 
+  // Giriş yoksa opsiyonel uyarı
   useEffect(() => {
     if (!user && message) {
-      // basit uyarı; isterseniz toast kütüphanesine bağlarız
       alert(message);
     }
   }, [user, message]);
 
-=======
-
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/store/auth";
-
-export default function ProtectedRoute({ children, role }: { children: JSX.Element; role?: "admin" | "user"; }) {
-  const { user } = useAuth();
-  const loc = useLocation();
-
->>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
+  // Giriş yoksa login'e, geldiği yolu state ile taşı
   if (!user) {
     return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   }
+
+  // Rol kısıtı varsa ve tutmuyorsa ana sayfaya
   if (role && user.role !== role) {
     return <Navigate to="/" replace />;
   }
+
+  // Yetkiliyse çocuk bileşeni göster
   return children;
 }
