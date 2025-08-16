@@ -3,6 +3,7 @@ import { useCart } from "@/store/cart";
 import { useAuth } from "@/store/auth";
 import { useFavorites } from "@/store/favorites";
 import { useLocation, useNavigate, Link } from "react-router-dom";
+import { Link as RLink } from "react-router-dom"; // istersen farklı isimle
 import { useState } from "react";
 
 export default function Shop() {
@@ -72,21 +73,29 @@ export default function Shop() {
               className="card"
               style={{ display: "grid", gap: 8 }}
             >
-              {p.image && (
-                <img
-                  src={p.image}
-                  alt={p.title}
-                  style={{
-                    width: "100%",
-                    height: 180,
-                    objectFit: "cover",
-                    borderRadius: 12,
-                  }}
-                  loading="lazy"
-                />
-              )}
-
-              <strong style={{ fontSize: 16 }}>{p.title}</strong>
+              <RLink
+                to={`/product/${p.id}`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                {p.image && (
+                  <img
+                    src={p.image}
+                    alt={p.title}
+                    style={{
+                      width: "100%",
+                      height: 180,
+                      objectFit: "cover",
+                      borderRadius: 12,
+                    }}
+                    loading="lazy"
+                  />
+                )}
+                <strong
+                  style={{ fontSize: 16, display: "block", marginTop: 6 }}
+                >
+                  {p.title}
+                </strong>
+              </RLink>
               <span style={{ color: "#111" }}>{p.price.toFixed(2)} ₺</span>
 
               <div style={{ display: "flex", gap: 8 }}>

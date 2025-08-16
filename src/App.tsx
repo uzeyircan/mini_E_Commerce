@@ -7,6 +7,7 @@ import Register from "@/pages/Register";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Shop from "@/pages/Shop";
 import CartPage from "@/pages/Cart";
+import ProductDetail from "@/pages/ProductDetail";
 
 function NotFound() {
   return <div style={{ padding: 24 }}>Sayfa bulunamadı.</div>;
@@ -17,6 +18,7 @@ export default function App() {
     <>
       <Header />
       <Routes>
+        <Route path="/product/:id" element={<ProductDetail />} />
         <Route
           path="/cart"
           element={
