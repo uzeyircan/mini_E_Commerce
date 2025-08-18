@@ -1,4 +1,3 @@
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -23,3 +22,5 @@ export const useAuth = create<AuthState>()(
     { name: "auth-store" }
   )
 );
+
+export const getToken = () => localStorage.getItem("token") ?? "";
