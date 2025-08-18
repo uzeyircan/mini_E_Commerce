@@ -25,14 +25,14 @@ export default function Shop() {
     id: string;
     title: string;
     price: number;
-    image: string;
+    image?: string;
   }) => {
     if (!user) {
       alert("Lütfen kayıt olunuz / giriş yapınız.");
       nav("/register", { state: { from: loc.pathname } });
       return;
     }
-    add({ id: p.id, title: p.title, price: p.price, image: p.image }, 1);
+    add({ id: p.id, title: p.title, price: p.price, image?: p.image? }, 1);
     setBounce((s) => ({ ...s, [p.id]: true }));
     setTimeout(() => setBounce((s) => ({ ...s, [p.id]: false })), 300);
   };
@@ -41,7 +41,7 @@ export default function Shop() {
     id: string;
     title: string;
     price: number;
-    image: string;
+    image?: string;
   }) => {
     if (favs[p.id]) removeFav(p.id);
     else addFav({ id: p.id, title: p.title, price: p.price, image: p.image });
