@@ -1,17 +1,16 @@
+// store/cart.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { CartItem } from "@/types";
 
-export type CartItem = {
-  id: string;
-  title: string;
-  price: number;
-  qty: number;
-};
+// Sepete dışarıdan gelecek payload: qty hariç her şey (image dahil)
+type CartItemInput = Omit<CartItem, "qty">;
 
 type CartState = {
   items: CartItem[];
   count: number;
-  add: (item: Omit<CartItem, "qty">, qty?: number) => void;
+  add: (item: CartItemInput, qty?: number) => void;
+  addToCart: (item: CartItemInput) => void;
   setQty: (id: string, qty: number) => void;
   increase: (id: string, delta?: number) => void;
   decrease: (id: string, delta?: number) => void;
@@ -33,10 +32,17 @@ export const useCart = create<CartState>()(
         add: (item, qty = 1) => {
           const items = [...get().items];
           const idx = items.findIndex((i) => i.id === item.id);
-          if (idx >= 0)
+          if (idx >= 0) {
             items[idx] = { ...items[idx], qty: items[idx].qty + qty };
-          else items.push({ ...item, qty });
+          } else {
+            // item: { id, title, price, image } -> CartItem haline getir
+            items.push({ ...item, qty });
+          }
           set({ items, count: recalc(items) });
+        },
+
+        addToCart: (item) => {
+          get().add(item, 1);
         },
 
         setQty: (id, qty) => {
