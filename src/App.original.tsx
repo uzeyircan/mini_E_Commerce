@@ -65,11 +65,11 @@ export default function App() {
             </PrivateRoute>
           }
         />
-<<<<<<< HEAD
+
         <Route path="/register" element={<LoginPage />} />
-=======
+
         <Route path="/login" element={<LoginPage />} />
->>>>>>> f489b90958e10f90b9b84f4c2316ca6e24e6f448
+
       </Routes>
       <footer className="container">
         <div className="muted">
