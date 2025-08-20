@@ -1,64 +1,58 @@
-// src/pages/Shop.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
 import { useProducts } from "@/store/product";
 import { useCart } from "@/store/cart";
-import { useAuth } from "@/store/auth";
 import { useFavorites } from "@/store/favorites";
-import type { Product } from "@/types";
-
-// Minimal tip: image opsiyonel
-type MinimalProduct = Pick<Product, "id" | "title" | "price"> & {
-  image?: string;
-};
+import { useAuth } from "@/store/auth";
 
 export default function Shop() {
-  const { items } = useProducts(); // Product[]
-  const add = useCart((s) => s.add); // (item, qty?) => void
-  const { user } = useAuth();
-  const nav = useNavigate();
-  const loc = useLocation();
-
-  // Favoriler
+  const { items, fetch } = useProducts();
+  const { add } = useCart();
   const favs = useFavorites((s) => s.items);
   const addFav = useFavorites((s) => s.add);
   const removeFav = useFavorites((s) => s.remove);
+  const fetchFavs = useFavorites((s) => s.fetch);
 
-  // Sepete ekle buton animasyonu (ürün bazlı)
-  const [bounce, setBounce] = useState<Record<string, boolean>>({});
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const [bouncingId, setBouncingId] = useState<string | null>(null);
 
-  const handleAdd = (p: MinimalProduct, qty = 1) => {
+  useEffect(() => {
+    fetch().catch(console.error);
+  }, [fetch]);
+
+  useEffect(() => {
+    if (user) fetchFavs().catch(console.error);
+  }, [user, fetchFavs]);
+
+  const requireAuth = () => {
     if (!user) {
-      alert("Lütfen kayıt olunuz / giriş yapınız.");
-      nav("/register", { state: { from: loc.pathname } });
-      return;
+      alert("Lütfen giriş yapınız / kayıt olunuz.");
+      nav("/login", { state: { from: loc.pathname } });
+      return true;
     }
-    // qty obje içinde DEĞİL, 2. parametre — image opsiyonel olduğu için "" ile düşürüyoruz
-    add(
-      { id: p.id, title: p.title, price: p.price, image: p.image ?? "" },
-      qty
-    );
-    setBounce((s) => ({ ...s, [p.id]: true }));
-    setTimeout(() => setBounce((s) => ({ ...s, [p.id]: false })), 300);
+    return false;
   };
 
-  const toggleFav = (p: MinimalProduct) => {
-    if (favs[p.id]) removeFav(p.id);
-    else
-      addFav({
-        id: p.id,
-        title: p.title,
-        price: p.price,
-        image: p.image ?? "",
-      });
+  const handleAdd = (p: { id: string; title: string; price: number }) => {
+    if (requireAuth()) return;
+    add({ id: p.id, title: p.title, price: p.price }, 1);
+    setBouncingId(p.id);
+    setTimeout(() => setBouncingId(null), 300);
+  };
+
+  const toggleFav = async (productId: string) => {
+    if (requireAuth()) return;
+    if (favs[productId]) await removeFav(productId);
+    else await addFav({ product_id: productId });
   };
 
   if (!items.length) {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
         <h1>Mağaza</h1>
-        <p style={{ color: "#6b7280" }}>Henüz ürün yok.</p>
+        <p className="muted">Henüz ürün yok.</p>
         {user?.role === "admin" && (
           <p>
             Ürün eklemek için <Link to="/admin">Admin Panel</Link>’e gidin.
@@ -71,11 +65,9 @@ export default function Shop() {
   return (
     <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
       <h1>Mağaza</h1>
-
       <div className="grid">
         {items.map((p) => {
           const isFav = !!favs[p.id];
-
           return (
             <article
               key={p.id}
@@ -86,18 +78,31 @@ export default function Shop() {
                 to={`/product/${p.id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                {p.image && (
+                {p.image ? (
                   <img
                     src={p.image}
                     alt={p.title}
-                    loading="lazy"
                     style={{
                       width: "100%",
                       height: 180,
                       objectFit: "cover",
                       borderRadius: 12,
                     }}
+                    loading="lazy"
                   />
+                ) : (
+                  <div
+                    style={{
+                      height: 180,
+                      borderRadius: 12,
+                      background: "#f1f5f9",
+                      display: "grid",
+                      placeItems: "center",
+                      color: "#64748b",
+                    }}
+                  >
+                    Görsel yok
+                  </div>
                 )}
                 <strong
                   style={{ fontSize: 16, display: "block", marginTop: 6 }}
@@ -108,33 +113,37 @@ export default function Shop() {
 
               <span style={{ color: "#111" }}>{p.price.toFixed(2)} ₺</span>
 
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <button
-                  type="button"
-                  style={{ cursor: "pointer", flex: 1 }}
                   className={`btn btn--primary ${
-                    bounce[p.id] ? "button-bounce" : ""
+                    bouncingId === p.id ? "button-bounce" : ""
                   }`}
-                  onClick={() => handleAdd(p, 1)}
+                  onClick={() => handleAdd(p)}
                 >
                   Sepete Ekle
                 </button>
 
-                {/* Favori butonu */}
                 <button
-                  type="button"
-                  className={`btn favbtn ${isFav ? "is-active" : ""}`}
-                  aria-label={isFav ? "Favoriden çıkar" : "Favorilere ekle"}
-                  title={isFav ? "Favoriden çıkar" : "Favorilere ekle"}
-                  onClick={() => toggleFav(p)}
+                  className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
+                  onClick={() => toggleFav(p.id)}
+                  title={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
                 >
-                  <svg
-                    className="favbtn__icon"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      gap: 6,
+                      alignItems: "center",
+                    }}
                   >
-                    <path d="M12 21s-6.7-4.35-9.33-7.5C.86 11.37 1 8.4 3.05 6.5 5.03 4.68 7.9 4.94 9.73 6.4L12 8.26l2.27-1.86C16.1 4.94 18.97 4.68 20.95 6.5c2.05 1.9 2.2 4.87.38 7C18.7 16.65 12 21 12 21z" />
-                  </svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                      <path
+                        fill={isFav ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z"
+                      />
+                    </svg>
+                    {isFav ? "Favoride" : "Favori"}
+                  </span>
                 </button>
               </div>
             </article>

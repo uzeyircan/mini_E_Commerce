@@ -1,30 +1,11 @@
 import { Link, NavLink } from "react-router-dom";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/store/auth";
-import { useFavorites } from "@/store/favorites";
-import { useEffect, useRef, useState } from "react";
 import "./header.css";
 
 export default function Header() {
   const { count } = useCart();
   const { user, logout } = useAuth();
-
-  const favItems = useFavorites((s) => s.items);
-  const removeFav = useFavorites((s) => s.remove);
-  const favCount = Object.keys(favItems).length;
-
-  const [favOpen, setFavOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
-  // Panel dışında tıklayınca kapat
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!panelRef.current) return;
-      if (!panelRef.current.contains(e.target as Node)) setFavOpen(false);
-    }
-    if (favOpen) document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [favOpen]);
 
   return (
     <header className="hdr">
@@ -63,64 +44,12 @@ export default function Header() {
             </div>
           )}
 
-          {/* Favoriler (kalp) */}
-          <div className="favwrap" ref={panelRef}>
-            <button
-              type="button"
-              className="fav"
-              aria-label="Favoriler"
-              aria-expanded={favOpen}
-              onClick={() => setFavOpen((v) => !v)}
-            >
-              <svg
-                className={`fav__icon ${favCount > 0 ? "is-active" : ""}`}
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path d="M12 21s-6.7-4.35-9.33-7.5C.86 11.37 1 8.4 3.05 6.5 5.03 4.68 7.9 4.94 9.73 6.4L12 8.26l2.27-1.86C16.1 4.94 18.97 4.68 20.95 6.5c2.05 1.9 2.2 4.87.38 7C18.7 16.65 12 21 12 21z" />
-              </svg>
-              {favCount > 0 && <span className="fav__badge">{favCount}</span>}
-            </button>
-
-            {favOpen && (
-              <div
-                className="favpanel"
-                role="dialog"
-                aria-label="Favoriler paneli"
-              >
-                <div className="favpanel__header">
-                  <strong>Favoriler</strong>
-                  {favCount === 0 && (
-                    <span className="muted">Henüz favori yok</span>
-                  )}
-                </div>
-                <div className="favpanel__body">
-                  {favCount > 0 &&
-                    Object.values(favItems).map((f) => (
-                      <div key={f.id} className="favitem">
-                        {f.image ? (
-                          <img src={f.image} alt="" className="favitem__img" />
-                        ) : (
-                          <div className="favitem__img --placeholder">IMG</div>
-                        )}
-                        <div className="favitem__meta">
-                          <div className="favitem__title">{f.title}</div>
-                          <div className="favitem__price">
-                            {f.price.toFixed(2)} ₺
-                          </div>
-                        </div>
-                        <button
-                          className="btn btn--ghost"
-                          onClick={() => removeFav(f.id)}
-                        >
-                          Kaldır
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Favoriler */}
+          <Link to="/favorites" className="fav" aria-label="Favoriler">
+            <svg className="fav__icon" viewBox="0 0 24 24" aria-hidden>
+              <path d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z" />
+            </svg>
+          </Link>
 
           {/* Sepet */}
           <Link to="/cart" className="cart" aria-label="Sepet">

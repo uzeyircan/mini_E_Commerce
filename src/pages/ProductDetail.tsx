@@ -1,20 +1,30 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
 import { useProducts } from "@/store/product";
 import { useAuth } from "@/store/auth";
+import { useCart } from "@/store/cart";
 import { useComments } from "@/store/comments";
-import { useMemo, useState } from "react";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
-  const { items: products } = useProducts();
+  const loc = useLocation();
+
+  const { items: products, fetch: fetchProducts } = useProducts();
   const product = useMemo(
     () => products.find((p) => p.id === id),
     [products, id]
   );
 
+  useEffect(() => {
+    if (!product) fetchProducts().catch(console.error);
+  }, [product, fetchProducts]);
+
   const { user } = useAuth();
+  const { add } = useCart();
+
   const comments = useComments((s) => (id ? s.items[id] ?? [] : []));
+  const fetchComments = useComments((s) => s.fetch);
   const addComment = useComments((s) => s.add);
   const updateComment = useComments((s) => s.update);
   const removeComment = useComments((s) => s.remove);
@@ -22,6 +32,11 @@ export default function ProductDetail() {
   const [text, setText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [bounce, setBounce] = useState(false);
+
+  useEffect(() => {
+    if (id) fetchComments(id).catch(console.error);
+  }, [id, fetchComments]);
 
   if (!product) {
     return (
@@ -34,39 +49,56 @@ export default function ProductDetail() {
     );
   }
 
-  const canEditOrDelete = (authorEmail: string) =>
-    !!user && (user.email === authorEmail || user.role === "admin");
+  const isOutOfStock = typeof product.stock === "number" && product.stock <= 0;
 
-  const onAdd = () => {
+  const requireAuth = () => {
     if (!user) {
-      alert("Yorum yapabilmek için giriş yapınız.");
-      return;
+      alert("Lütfen giriş yapınız / kayıt olunuz.");
+      nav("/login", { state: { from: loc.pathname } });
+      return true;
     }
+    return false;
+  };
+
+  const handleAddToCart = () => {
+    if (requireAuth()) return;
+    add({ id: product.id, title: product.title, price: product.price }, 1);
+    setBounce(true);
+    setTimeout(() => setBounce(false), 300);
+  };
+
+  const handleBuyNow = () => {
+    if (requireAuth()) return;
+    // Demo akış (ödeme yok)
+    alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
+  };
+
+  const canEditOrDelete = (authorEmail?: string) =>
+    !!user &&
+    ((!!authorEmail && user.email === authorEmail) || user.role === "admin");
+
+  const onAddComment = async () => {
+    if (requireAuth()) return;
     if (!text.trim()) return;
-    addComment({
-      productId: product.id,
-      authorEmail: user.email,
-      authorName: user.email.split("@")[0],
-      text: text.trim(),
-    });
+    await addComment(product.id, text.trim());
     setText("");
   };
 
-  const onStartEdit = (id: string, curr: string) => {
-    setEditingId(id);
+  const onStartEdit = (cid: string, curr: string) => {
+    setEditingId(cid);
     setEditText(curr);
   };
 
-  const onSaveEdit = (cid: string) => {
+  const onSaveEdit = async (cid: string) => {
     if (!editText.trim()) return;
-    updateComment(product.id, cid, editText.trim());
+    await updateComment(product.id, cid, editText.trim());
     setEditingId(null);
     setEditText("");
   };
 
-  const onDelete = (cid: string) => {
+  const onDelete = async (cid: string) => {
     if (!confirm("Yorumu silmek istiyor musunuz?")) return;
-    removeComment(product.id, cid);
+    await removeComment(product.id, cid);
   };
 
   return (
@@ -85,136 +117,12 @@ export default function ProductDetail() {
         </Link>
       </nav>
 
-      <div
-        className="card"
-        style={{
-          display: "grid",
-          gap: 16,
-          gridTemplateColumns: "1fr",
-          alignItems: "start",
-        }}
-      >
-        {/* Üst: görsel solda, metin sağda (desktop'ta iki kolon) */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gap: 16,
-              gridTemplateColumns: "1fr",
-              alignItems: "start",
-            }}
-          >
-            <div style={{ display: "grid", gap: 16 }}>
-              {/* responsive 2 kolon */}
-              <div
-                style={{
-                  display: "grid",
-                  gap: 16,
-                  gridTemplateColumns: "1fr",
-                }}
-              >
-                <div style={{ display: "grid", gap: 16 }}>
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: 16,
-                      gridTemplateColumns: "1fr",
-                    }}
-                  >
-                    {/* wrapper */}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Responsive iki kolon */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gap: 16,
-                gridTemplateColumns: "1fr",
-              }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        />
-
-        {/* Asıl layout */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        />
-
-        {/* Desktop 2 kolon */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        />
-
-        {/* gerçek içerik */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        />
-
-        {/* İçeriği sade yazalım */}
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gap: 16,
-              gridTemplateColumns: "1fr",
-            }}
-          />
-        </div>
-
-        {/* Nihai iki kolon */}
+      {/* Ürün */}
+      <div className="card" style={{ display: "grid", gap: 16 }}>
         <div
           style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}
         >
-          {/* Sol: Görsel */}
+          {/* Sol görsel */}
           <div>
             {product.image ? (
               <img
@@ -244,9 +152,15 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Sağ: Başlık + açıklama */}
-          <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
+          {/* Sağ bilgi */}
+          <div style={{ display: "grid", gap: 12, alignContent: "start" }}>
             <h1 style={{ margin: 0 }}>{product.title}</h1>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>
+              {product.price.toFixed(2)} ₺
+            </div>
+            {typeof product.stock === "number" && (
+              <div className="muted">Stok: {product.stock}</div>
+            )}
             {product.description ? (
               <p style={{ color: "#111", lineHeight: 1.6 }}>
                 {product.description}
@@ -254,6 +168,24 @@ export default function ProductDetail() {
             ) : (
               <p className="muted">Açıklama eklenmemiş.</p>
             )}
+
+            {/* Aksiyonlar */}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button
+                className={`btn btn--ghost ${bounce ? "button-bounce" : ""}`}
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+              >
+                Sepete Ekle
+              </button>
+              <button
+                className="btn btn--primary"
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+              >
+                Satın Al
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -262,14 +194,9 @@ export default function ProductDetail() {
       <div className="card" style={{ display: "grid", gap: 12 }}>
         <h2 style={{ margin: 0, textAlign: "center" }}>Yorumlar</h2>
 
-        {/* Yorum ekleme */}
+        {/* Ekleme */}
         <div
-          style={{
-            display: "grid",
-            gap: 8,
-            width: "100%",
-            margin: "0 auto",
-          }}
+          style={{ display: "grid", gap: 8, maxWidth: 720, margin: "0 auto" }}
         >
           {!user ? (
             <p className="muted" style={{ textAlign: "center" }}>
@@ -279,16 +206,14 @@ export default function ProductDetail() {
             <>
               <textarea
                 className="ui-textarea comment-fixed"
-                maxLength={500}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                rows={3}
-                placeholder="Ürün hakkında düşüncelerinizi yazın… (En fazla 500 karakter)"
+                placeholder="Ürün hakkında düşüncelerinizi yazın…"
               />
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <button
                   className="btn btn--primary"
-                  onClick={onAdd}
+                  onClick={onAddComment}
                   disabled={!text.trim()}
                 >
                   Yorum Gönder
@@ -308,7 +233,7 @@ export default function ProductDetail() {
             </p>
           ) : (
             comments.map((c) => {
-              const mine = canEditOrDelete(c.authorEmail);
+              const mine = canEditOrDelete(c.author_email);
               return (
                 <div
                   key={c.id}
@@ -323,13 +248,13 @@ export default function ProductDetail() {
                     }}
                   >
                     <div style={{ fontWeight: 600 }}>
-                      {c.authorName || c.authorEmail}
+                      {c.author_name || c.author_email || "Kullanıcı"}
                       <span
                         className="muted"
                         style={{ marginLeft: 8, fontSize: 12 }}
                       >
-                        {new Date(c.createdAt).toLocaleString()}
-                        {c.updatedAt ? " (düzenlendi)" : ""}
+                        {new Date(c.created_at).toLocaleString()}
+                        {c.updated_at ? " (düzenlendi)" : ""}
                       </span>
                     </div>
                     {mine && (
@@ -376,9 +301,9 @@ export default function ProductDetail() {
                   {editingId === c.id ? (
                     <textarea
                       className="ui-textarea comment-fixed"
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      placeholder="Ürün hakkında düşüncelerinizi yazın… (En fazla 500 karakter)"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      style={{ marginTop: 8 }}
                     />
                   ) : (
                     <p style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>

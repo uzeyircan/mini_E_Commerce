@@ -1,26 +1,31 @@
 import { FormEvent, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/store/auth";
 import "./auth.css";
 
 export default function Register() {
   const nav = useNavigate();
   const loc = useLocation();
+  const { register } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    // TODO: backend kayıt isteği
-    // Kayıttan sonra login sayfasına, from bilgisini koruyarak git
-    const from = (loc.state as any)?.from ?? "/";
-    nav("/login", { state: { from } });
+    try {
+      await register(email, password);
+      const from = (loc.state as any)?.from ?? "/";
+      nav(from, { replace: true });
+    } catch (err: any) {
+      alert(err?.message || "Kayıt başarısız");
+    }
   }
 
   return (
     <div className="authwrap">
       <form className="authcard" onSubmit={onSubmit}>
         <h1>Kayıt Ol</h1>
-
         <label>
           E-posta
           <input
@@ -30,7 +35,6 @@ export default function Register() {
             required
           />
         </label>
-
         <label>
           Şifre
           <input
@@ -40,11 +44,9 @@ export default function Register() {
             required
           />
         </label>
-
         <button className="btn btn--primary" type="submit">
           Kayıt Ol
         </button>
-
         <p className="muted">
           Zaten hesabın var mı? <Link to="/login">Giriş Yap</Link>
         </p>

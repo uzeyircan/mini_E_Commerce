@@ -1,34 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/store/cart";
 import { useProducts } from "@/store/product";
-import { useFavorites, Fav } from "@/store/favorites";
+import { useFavorites } from "@/store/favorites";
 
 export default function CartPage() {
-  const { items, increase, decrease, setQty, remove, removeMany } = useCart();
-  const { items: products } = useProducts(); // görsel için
+  const { items, fetch, increase, decrease, setQty, remove, removeMany } =
+    useCart();
+  const { items: products, fetch: fetchProducts } = useProducts();
   const productMap = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
     [products]
   );
 
-  // --- Seçim mantığı ---
+  useEffect(() => {
+    fetch().catch(console.error);
+    fetchProducts().catch(console.error);
+  }, [fetch, fetchProducts]);
+
+  // seçim
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const next: Record<string, boolean> = {};
-    items.forEach((i) => (next[i.id] = selected[i.id] ?? true));
+    items.forEach((i) => (next[i.product_id] = selected[i.product_id] ?? true));
     setSelected(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
 
-  const allChecked = items.length > 0 && items.every((i) => selected[i.id]);
-  const anyChecked = items.some((i) => selected[i.id]);
+  const allChecked =
+    items.length > 0 && items.every((i) => selected[i.product_id]);
+  const anyChecked = items.some((i) => selected[i.product_id]);
   const toggleAll = (checked: boolean) => {
     const next: Record<string, boolean> = {};
-    items.forEach((i) => (next[i.id] = checked));
+    items.forEach((i) => (next[i.product_id] = checked));
     setSelected(next);
   };
 
-  // indeterminate görseli
   const allRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (allRef.current) {
@@ -36,43 +42,36 @@ export default function CartPage() {
     }
   }, [anyChecked, allChecked]);
 
-  const selectedItems = items.filter((i) => selected[i.id]);
-  const selectedTotal = selectedItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const selectedItems = items.filter((i) => selected[i.product_id]);
+  const selectedTotal = selectedItems.reduce((s, i) => {
+    const p = productMap.get(i.product_id);
+    return s + (p?.price ?? 0) * i.qty;
+  }, 0);
 
-  // --- Favoriler STORE ---
-  const favItems = useFavorites((s) => s.items);
+  // Favoriler
   const addFav = useFavorites((s) => s.add);
-  const removeFav = useFavorites((s) => s.remove);
+  const favItems = useFavorites((s) => s.items);
+  const removeFavLocal = useFavorites((s) => s.remove); // listede kaldırmak için de kullanılır
 
-  // --- Kaldırma modalı ---
+  // Kaldır modal
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const openConfirm = (id: string) => setConfirmId(id);
   const closeConfirm = () => setConfirmId(null);
 
-  const handleRemove = (id: string, alsoFavorite: boolean) => {
-    const ci = items.find((x) => x.id === id);
-    if (ci) {
-      const p = productMap.get(ci.id);
-      if (alsoFavorite) {
-        addFav({
-          id: ci.id,
-          title: ci.title,
-          price: ci.price,
-          image: p?.image,
-        });
-      }
-      remove(ci.id);
+  const handleRemove = async (productId: string, alsoFavorite: boolean) => {
+    const p = productMap.get(productId);
+    if (alsoFavorite && p) {
+      await addFav({ product_id: p.id }); // title/price istersen zenginleştir
     }
+    await remove(productId);
     closeConfirm();
   };
 
-  // Satın alma (seçilenleri)
   const onPurchase = async () => {
     if (selectedItems.length === 0) {
       alert("Satın almak için en az bir ürünü seçin.");
       return;
     }
-    removeMany(selectedItems.map((i) => i.id));
+    await removeMany(selectedItems.map((i) => i.product_id));
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
 
@@ -80,16 +79,15 @@ export default function CartPage() {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
         <h1>Sepet</h1>
-        <p style={{ color: "#6b7280" }}>Sepetiniz boş.</p>
-        <FavoritesSection favs={favItems} removeFav={removeFav} />
+        <p className="muted">Sepetiniz boş.</p>
+        <FavoritesSection favs={favItems} removeFav={removeFavLocal} />
       </div>
     );
   }
 
-  const confirmItem = confirmId
-    ? items.find((i) => i.id === confirmId)
-    : undefined;
   const confirmImage = confirmId ? productMap.get(confirmId)?.image : undefined;
+  const confirmTitle = confirmId ? productMap.get(confirmId)?.title ?? "" : "";
+  const confirmPrice = confirmId ? productMap.get(confirmId)?.price ?? 0 : 0;
 
   return (
     <div
@@ -103,7 +101,7 @@ export default function CartPage() {
     >
       <h1>Sepet</h1>
 
-      {/* Üst çubuk */}
+      {/* üst bar */}
       <div
         className="card"
         style={{
@@ -127,10 +125,8 @@ export default function CartPage() {
         {allChecked && (
           <button
             className="btn btn--ghost"
-            onClick={() => removeMany(items.map((i) => i.id))}
+            onClick={() => removeMany(items.map((i) => i.product_id))}
             style={{ borderColor: "#ef4444", color: "#b91c1c", marginLeft: 8 }}
-            aria-label="Tümünü Kaldır"
-            title="Sepetteki tüm ürünleri kaldır"
           >
             Tümünü Kaldır
           </button>
@@ -149,7 +145,7 @@ export default function CartPage() {
         </button>
       </div>
 
-      {/* Liste */}
+      {/* tablo */}
       <div className="card" style={{ padding: 0 }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -165,17 +161,21 @@ export default function CartPage() {
             </thead>
             <tbody>
               {items.map((i) => {
-                const p = productMap.get(i.id);
+                const p = productMap.get(i.product_id);
+                const price = p?.price ?? 0;
                 return (
-                  <tr key={i.id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <tr
+                    key={i.product_id}
+                    style={{ borderTop: "1px solid #e5e7eb" }}
+                  >
                     <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                       <input
                         type="checkbox"
-                        checked={!!selected[i.id]}
+                        checked={!!selected[i.product_id]}
                         onChange={(e) =>
                           setSelected((s) => ({
                             ...s,
-                            [i.id]: e.target.checked,
+                            [i.product_id]: e.target.checked,
                           }))
                         }
                         aria-label="Ürünü seç"
@@ -203,7 +203,9 @@ export default function CartPage() {
                         />
                       )}
                       <div>
-                        <div style={{ fontWeight: 600 }}>{i.title}</div>
+                        <div style={{ fontWeight: 600 }}>
+                          {p?.title ?? "Ürün"}
+                        </div>
                         {typeof p?.stock === "number" && (
                           <div style={{ color: "#6b7280", fontSize: 12 }}>
                             Stok: {p.stock}
@@ -212,7 +214,7 @@ export default function CartPage() {
                       </div>
                     </td>
 
-                    <td>{i.price.toFixed(2)} ₺</td>
+                    <td>{price.toFixed(2)} ₺</td>
 
                     <td>
                       <div
@@ -224,7 +226,7 @@ export default function CartPage() {
                       >
                         <button
                           className="btn btn--ghost"
-                          onClick={() => decrease(i.id)}
+                          onClick={() => decrease(i.product_id)}
                         >
                           -
                         </button>
@@ -234,7 +236,7 @@ export default function CartPage() {
                           value={i.qty}
                           onChange={(e) =>
                             setQty(
-                              i.id,
+                              i.product_id,
                               Math.max(1, Number(e.target.value) || 1)
                             )
                           }
@@ -248,19 +250,19 @@ export default function CartPage() {
                         />
                         <button
                           className="btn btn--ghost"
-                          onClick={() => increase(i.id)}
+                          onClick={() => increase(i.product_id)}
                         >
                           +
                         </button>
                       </div>
                     </td>
 
-                    <td>{(i.price * i.qty).toFixed(2)} ₺</td>
+                    <td>{(price * i.qty).toFixed(2)} ₺</td>
 
                     <td>
                       <button
                         className="btn btn--primary"
-                        onClick={() => setConfirmId(i.id)}
+                        onClick={() => setConfirmId(i.product_id)}
                       >
                         Kaldır
                       </button>
@@ -273,15 +275,13 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Alt özet + satın al */}
+      {/* alt toplam */}
       <div
         className="card"
         style={{ display: "flex", alignItems: "center", gap: 16 }}
       >
-        <div style={{ marginLeft: "auto" }}>
-          <div style={{ fontWeight: 700 }}>
-            Seçili Toplam: {selectedTotal.toFixed(2)} ₺
-          </div>
+        <div style={{ marginLeft: "auto", fontWeight: 700 }}>
+          Seçili Toplam: {selectedTotal.toFixed(2)} ₺
         </div>
         <button
           className="btn btn--primary"
@@ -293,15 +293,15 @@ export default function CartPage() {
       </div>
 
       {/* Favoriler bölümü */}
-      <FavoritesSection favs={favItems} removeFav={removeFav} />
+      <FavoritesSection favs={favItems} removeFav={removeFavLocal} />
 
       {/* Kaldırma Modalı */}
       {confirmId && (
         <ConfirmRemoveModal
-          title={items.find((i) => i.id === confirmId)?.title || ""}
-          price={items.find((i) => i.id === confirmId)?.price || 0}
-          image={productMap.get(confirmId)?.image}
-          onClose={() => setConfirmId(null)}
+          title={confirmTitle}
+          price={confirmPrice}
+          image={confirmImage ?? undefined}
+          onClose={closeConfirm}
           onRemove={() => handleRemove(confirmId, false)}
           onRemoveAndFav={() => handleRemove(confirmId, true)}
         />
@@ -314,8 +314,8 @@ function FavoritesSection({
   favs,
   removeFav,
 }: {
-  favs: Record<string, Fav>;
-  removeFav: (id: string) => void;
+  favs: Record<string, { product_id: string }>;
+  removeFav: (id: string) => Promise<void>;
 }) {
   const list = Object.values(favs);
   if (list.length === 0) return null;
@@ -323,43 +323,26 @@ function FavoritesSection({
   return (
     <div className="card" style={{ display: "grid", gap: 12 }}>
       <h2 style={{ margin: 0 }}>Favoriler</h2>
-      <div style={{ display: "grid", gap: 12 }}>
-        {list.map((f) => (
-          <div
-            key={f.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              borderTop: "1px solid #e5e7eb",
-              paddingTop: 12,
-            }}
+      {list.map((f) => (
+        <div
+          key={f.product_id}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            borderTop: "1px solid #e5e7eb",
+            paddingTop: 12,
+          }}
+        >
+          <div style={{ flex: 1 }}>Ürün ID: {f.product_id}</div>
+          <button
+            className="btn btn--primary"
+            onClick={() => removeFav(f.product_id)}
           >
-            {f.image && (
-              <img
-                src={f.image}
-                alt=""
-                style={{
-                  width: 48,
-                  height: 48,
-                  objectFit: "cover",
-                  borderRadius: 8,
-                }}
-              />
-            )}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>{f.title}</div>
-              <div style={{ color: "#111" }}>{f.price.toFixed(2)} ₺</div>
-            </div>
-            <button
-              className="btn btn--primary"
-              onClick={() => removeFav(f.id)}
-            >
-              Kaldır
-            </button>
-          </div>
-        ))}
-      </div>
+            Kaldır
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
