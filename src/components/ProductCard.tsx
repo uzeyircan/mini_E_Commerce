@@ -8,14 +8,18 @@ export default function ProductCard({ p }: { p: Product }) {
 
   return (
     <div className="card">
-      <img className="thumb" src={p.image} alt={p.title} loading="lazy" />
+      {p.image && (
+        <img className="thumb" src={p.image} alt={p.title} loading="lazy" />
+      )}
 
       <div className="row" style={{ justifyContent: "space-between" }}>
         <strong>{p.title}</strong>
-        <span className="badge">{p.rating.toFixed(1)}★</span>
+        {"rating" in p && p.rating != null && (
+          <span className="badge">{Number(p.rating).toFixed(1)}★</span>
+        )}
       </div>
 
-      <div className="muted">{p.description}</div>
+      {p.description && <div className="muted">{p.description}</div>}
 
       <div className="row">
         <select
@@ -36,12 +40,7 @@ export default function ProductCard({ p }: { p: Product }) {
 
       <button
         className="btn"
-        onClick={() =>
-          add(
-            { id: p.id, title: p.title, price: p.price, image: p.image }, // qty YOK
-            qty // <-- miktar 2. parametre
-          )
-        }
+        onClick={() => add({ id: p.id, title: p.title, price: p.price }, qty)}
       >
         Sepete Ekle
       </button>

@@ -7,16 +7,16 @@ import { useAuth } from "@/store/auth";
 import "./styles.css";
 
 function PrivateRoute({ children }: { children: JSX.Element }) {
-  const { token } = useAuth();
-  return token ? children : <LoginPage />;
+  const { user } = useAuth();
+  return user ? children : <LoginPage />;
 }
 
 function AuthButtons() {
-  const { user, logout, token } = useAuth();
-  if (!token) return <></>;
+  const { user, logout } = useAuth();
+  if (!user) return null;
   return (
     <div className="row" style={{ gap: 8 }}>
-      <span className="badge">{user?.email}</span>
+      <span className="badge">{user.email}</span>
       <button className="btn ghost" onClick={logout}>
         Çıkış
       </button>
@@ -54,6 +54,7 @@ export default function App() {
           <AuthButtons />
         </nav>
       </header>
+
       <Routes>
         <Route path="/" element={<ProductsPage />} />
         <Route path="/cart" element={<CartPage />} />
@@ -65,15 +66,13 @@ export default function App() {
             </PrivateRoute>
           }
         />
-
-        <Route path="/register" element={<LoginPage />} />
-
         <Route path="/login" element={<LoginPage />} />
-
+        <Route path="/register" element={<LoginPage />} />
       </Routes>
+
       <footer className="container">
         <div className="muted">
-          Demo • React + Vite + TS + Zustand + Express + JWT
+          Demo • React + Vite + TS + Zustand + Supabase
         </div>
       </footer>
     </>
