@@ -1,18 +1,7 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Product, useProducts } from "@/store/product";
 
 type Props = { edit?: Product | null; onDone?: () => void };
-
-function isValidUrl(s: string) {
-  const v = s.trim();
-  if (!v) return true; // opsiyonel
-  try {
-    const u = new URL(v);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 export default function ProductForm({ edit, onDone }: Props) {
   const add = useProducts((s) => s.add);
@@ -24,17 +13,6 @@ export default function ProductForm({ edit, onDone }: Props) {
   const [stock, setStock] = useState<number | "">("");
   const [description, setDescription] = useState("");
 
-  // alan bazlı hafif doğrulama (sadece görsel amaçlı)
-  const [err, setErr] = useState<{
-    title?: string;
-    price?: string;
-    image?: string;
-    stock?: string;
-  }>({});
-
-  // Görsel önizleme (debounce)
-  const previewUrl = useMemo(() => image.trim(), [image]);
-
   useEffect(() => {
     if (edit) {
       setTitle(edit.title);
@@ -42,31 +20,18 @@ export default function ProductForm({ edit, onDone }: Props) {
       setImage(edit.image || "");
       setStock(edit.stock ?? "");
       setDescription(edit.description || "");
-      setErr({});
     } else {
       setTitle("");
       setPrice("");
       setImage("");
       setStock("");
       setDescription("");
-      setErr({});
     }
   }, [edit]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-
-    // hafif alan kontrolü
-    const nextErr: typeof err = {};
-    if (!title.trim()) nextErr.title = "Başlık zorunludur.";
-    if (price === "" || Number(price) < 0)
-      nextErr.price = "Geçerli bir fiyat girin.";
-    if (!isValidUrl(image))
-      nextErr.image = "Geçerli bir URL girin (https/ http).";
-    if (stock !== "" && Number(stock) < 0)
-      nextErr.stock = "Stok negatif olamaz.";
-    setErr(nextErr);
-    if (Object.keys(nextErr).length) return;
+    if (!title || price === "" || Number(price) < 0) return;
 
     const payload = {
       title: title.trim(),
@@ -87,149 +52,98 @@ export default function ProductForm({ edit, onDone }: Props) {
       setImage("");
       setStock("");
       setDescription("");
-      setErr({});
     }
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="card"
-      style={{ display: "grid", gap: 12 }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <h2 style={{ margin: 0 }}>
-          {edit ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
-        </h2>
-        <span className="muted" style={{ fontSize: 12 }}>
-          Zorunlu alanlar <span style={{ color: "#ef4444" }}>*</span> ile
-          işaretlidir.
-        </span>
+    <form onSubmit={onSubmit} className="card form-grid">
+      <div className="form-head">
+        <h2 className="form-title">{edit ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}</h2>
+        {!edit && <span className="form-hint">Zorunlu alanlar <span className="req">*</span> ile işaretlidir.</span>}
       </div>
 
       {/* Başlık */}
-      <label className="field">
-        <span className="label">
+      <div className="field">
+        <label className="label">
           Başlık <span className="req">*</span>
-        </span>
+        </label>
         <input
-          className="ui-input"
+          className="input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Örn: Basic T-Shirt"
-          aria-invalid={!!err.title}
-          aria-describedby={err.title ? "err_title" : undefined}
           required
+          placeholder="Örn: Basic T-Shirt"
         />
-        <div className="hint">Kısa, açıklayıcı bir isim kullanın.</div>
-        {err.title && (
-          <div id="err_title" className="error">
-            {err.title}
-          </div>
-        )}
-      </label>
+        <small className="help">Kısa, açıklayıcı bir isim kullanın.</small>
+      </div>
 
       {/* Fiyat */}
-      <label className="field">
-        <span className="label">
+      <div className="field">
+        <label className="label">
           Fiyat (₺) <span className="req">*</span>
-        </span>
-        <div className="input-addon ui-input" aria-invalid={!!err.price}>
-          <span className="addon" style={{ padding: "0 15px" }}>
-            ₺
-          </span>
+        </label>
+        <div className="inputgroup">
+          <span className="adorn-left">₺</span>
           <input
-            className="ui-input u-pad-left"
+            className="input input--adorn-left"
             type="number"
             step="0.01"
             min="0"
+            inputMode="decimal"
             value={price}
             onChange={(e) =>
               setPrice(e.target.value === "" ? "" : Number(e.target.value))
             }
-            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} // scroll ile değer değişmesin
             required
+            placeholder="0.00"
           />
         </div>
-        <div className="hint">Ondalık için nokta/virgül kullanabilirsiniz.</div>
-        {err.price && <div className="error">{err.price}</div>}
-      </label>
+        <small className="help">Ondalık için nokta/virgül kullanabilirsiniz.</small>
+      </div>
 
-      {/* Görsel URL + Önizleme */}
+      {/* Görsel URL */}
       <div className="field">
         <label className="label">Görsel URL (opsiyonel)</label>
         <input
-          className="ui-input"
+          className="input"
           value={image}
           onChange={(e) => setImage(e.target.value)}
-          placeholder="https://..."
-          aria-invalid={!!err.image}
-          aria-describedby={err.image ? "err_image" : undefined}
+          placeholder="https://…"
+          inputMode="url"
         />
-        <div className="hint">
-          Barındırma/CDN linki (örn. Cloudinary, GitHub Raw, vb.).
-        </div>
-        {err.image && (
-          <div id="err_image" className="error">
-            {err.image}
-          </div>
-        )}
-        {previewUrl && isValidUrl(previewUrl) && (
-          <div className="preview">
-            <img src={previewUrl} alt="Önizleme" />
-            <span className="muted" style={{ fontSize: 12 }}>
-              Önizleme
-            </span>
-          </div>
-        )}
+        <small className="help">CDN/Barındırma linki (Cloudinary, GitHub Raw, vb.).</small>
       </div>
 
       {/* Stok */}
-      <label className="field">
-        <span className="label">Stok (opsiyonel)</span>
+      <div className="field">
+        <label className="label">Stok (opsiyonel)</label>
         <input
-          className="ui-input"
+          className="input"
           type="number"
           min="0"
           value={stock}
           onChange={(e) =>
             setStock(e.target.value === "" ? "" : Number(e.target.value))
           }
-          onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
-          aria-invalid={!!err.stock}
-          aria-describedby={err.stock ? "err_stock" : undefined}
+          placeholder="Örn: 20"
         />
-        <div className="hint">
-          Boş bırakılırsa “stok belirtilmedi” kabul edilir.
-        </div>
-        {err.stock && (
-          <div id="err_stock" className="error">
-            {err.stock}
-          </div>
-        )}
-      </label>
+        <small className="help">Boş bırakılırsa “stok belirtilmedi” kabul edilir.</small>
+      </div>
 
       {/* Açıklama */}
-      <label className="field">
-        <span className="label">Açıklama (opsiyonel)</span>
+      <div className="field">
+        <label className="label">Açıklama (opsiyonel)</label>
         <textarea
-          className="ui-textarea"
+          className="textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          placeholder="Ürünle ilgili kısa açıklama..."
+          placeholder="Ürünle ilgili kısa açıklama…"
         />
-      </label>
+      </div>
 
       {/* Aksiyonlar */}
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div className="actions">
         {onDone && (
           <button type="button" className="btn btn--ghost" onClick={onDone}>
             İptal

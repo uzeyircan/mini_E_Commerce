@@ -286,3 +286,159 @@ a {
   border-color: #fecaca;
   background: #fff5f5;
 }
+/* Form iskeleti */
+.form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.form-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.form-title {
+  margin: 0;
+}
+.form-hint {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* Alan */
+.field {
+  display: grid;
+  gap: 6px;
+}
+.label {
+  font-weight: 600;
+  color: #111827;
+}
+.req {
+  color: #dc2626;
+}
+
+/* Input/textarea temel */
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;         /* yuvarlaklık */
+  padding: 10px 12px;
+  background: #fff;
+  color: #111827;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.input:focus,
+.textarea:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, .1);
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: #9ca3af;
+}
+.textarea {
+  resize: vertical;
+}
+
+/* Adorned input (₺ vb.) */
+.inputgroup {
+  position: relative;
+}
+.adorn-left {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+.input--adorn-left {
+  padding-left: 28px; /* sol süs için yer aç */
+}
+
+/* Alt açıklama */
+.help {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* Aksiyonlar */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Kart ile uyum */
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* Butonlar (projedeki sınıflarla uyumlu) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn--primary {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+.btn--ghost {
+  background: #fff;
+  color: #111827;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .card { padding: 12px; }
+  .actions { justify-content: stretch; }
+  .actions .btn { flex: 1; }
+}
+
+/* Chrome / Edge / Safari */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield; /* yeni Edge/Chromium için de güvence */
+}
+
+/* Soldaki ₺ süsünü kullandığımız input için padding düzeltmesi */
+.input--adorn-left {
+  padding-left: 28px !important;
+  padding-right: 12px !important;
+}
+
+/* Eski sürümden kalma “suffix” benzeri ekler varsa tamamen gizle */
+.input-wrap .suffix,
+.field .suffix,
+.inputgroup .suffix {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Kutuların taşmaması için */
+.input, .textarea, .inputgroup .input {
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
