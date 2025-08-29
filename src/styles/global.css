@@ -48,12 +48,7 @@ a {
   color: #1d4ed8;
 }
 
-.hdr__right {
-  margin-left: auto;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
+
 .userchip {
   background: #f1f5f9;
   padding: 6px 10px;

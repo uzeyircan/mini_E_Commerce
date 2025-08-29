@@ -11,8 +11,10 @@
     "postinstall": "msw init public/ --save"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "@supabase/supabase-js": "^2.55.0",
     "clsx": "^2.1.1",
+    "mdb-react-ui-kit": "^9.0.0",
     "msw": "^2.3.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

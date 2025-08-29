@@ -38,10 +38,16 @@ export default function Header() {
               Admin Panel
             </NavLink>
           )}
+          
         </nav>
 
         {/* Sağ aksiyonlar */}
         <div className="hdr__right">
+          {user && (
+            <Link to="/profile" className="userchip" title="Profil">
+              {user.email?.[0]?.toUpperCase()}
+            </Link>
+          )}
           {!user ? (
             <div className="auth auth--out">
               <Link to="/register" className="btn btn--ghost">
@@ -53,7 +59,7 @@ export default function Header() {
             </div>
           ) : (
             <div className="auth auth--in">
-              <span className="userchip">{user.email}</span>
+              
               <button className="btn btn--ghost" onClick={logout}>
                 Çıkış
               </button>
@@ -90,11 +96,20 @@ export default function Header() {
       >
         <div className="mobile__panel" onClick={(e) => e.stopPropagation()}>
           <nav className="nav nav--mobile" aria-label="Primary mobile">
-            <NavLink to="/" end className="nav__link" onClick={() => setOpen(false)}>
+            <NavLink
+              to="/"
+              end
+              className="nav__link"
+              onClick={() => setOpen(false)}
+            >
               Mağaza
             </NavLink>
             {user?.role === "admin" && (
-              <NavLink to="/admin" className="nav__link" onClick={() => setOpen(false)}>
+              <NavLink
+                to="/admin"
+                className="nav__link"
+                onClick={() => setOpen(false)}
+              >
                 Admin Panel
               </NavLink>
             )}
@@ -102,10 +117,18 @@ export default function Header() {
 
           {!user ? (
             <div className="auth auth--mobile">
-              <Link to="/register" className="btn btn--ghost" onClick={() => setOpen(false)}>
+              <Link
+                to="/register"
+                className="btn btn--ghost"
+                onClick={() => setOpen(false)}
+              >
                 Kayıt Ol
               </Link>
-              <Link to="/login" className="btn btn--primary" onClick={() => setOpen(false)}> 
+              <Link
+                to="/login"
+                className="btn btn--primary"
+                onClick={() => setOpen(false)}
+              >
                 Giriş Yap
               </Link>
             </div>

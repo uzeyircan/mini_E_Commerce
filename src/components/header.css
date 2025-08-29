@@ -58,11 +58,11 @@
   align-items: center;
 }
 .userchip {
-  font-size: 12px;
-  padding: 6px 8px;
+  font-size: 20px;
+  padding: 8px 18px;
   border-radius: 999px;
   background: #f3f4f6;
-  color: #111827;
+  color: #1c3772;
 }
 .userchip--mobile {
   align-self: flex-start;
@@ -129,7 +129,6 @@
   display: none;
 }
 
-/* Butonlar (projedeki sınıflarla uyumlu) */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -151,7 +150,7 @@
   color: #111827;
 }
 
-/* ====== BREAKPOINTS ====== */
+
 
 /* < 960px: biraz sıkıştır */
 @media (max-width: 960px) {
@@ -160,6 +159,7 @@
   }
   .menu-btn {
     display: inline-flex;
+    
   }
 }
 

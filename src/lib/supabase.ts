@@ -1,10 +1,13 @@
-// src/lib/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL as string;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-if (!url) console.error("Missing VITE_SUPABASE_URL");
-if (!anon) console.error("Missing VITE_SUPABASE_ANON_KEY");
-
-export const supabase = createClient(url!, anon!);
+// tarayıcıda kalıcı oturum + token auto refresh
+export const supabase = createClient(url, anon, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  },
+});

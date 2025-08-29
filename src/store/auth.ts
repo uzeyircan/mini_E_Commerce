@@ -1,84 +1,135 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 
-export type Role = "user" | "admin";
-export type User = { id: string; email: string; role: Role };
+type Role = "user" | "admin";
+type User = { id: string; email: string; role: Role };
 
 type AuthState = {
   user: User | null;
-  loadSession: () => Promise<void>;
+  // yeni: init ve auth state dinleyicisi
+  initialize: () => Promise<void>;
+  // mevcut action'ların
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
+async function fetchProfileRole(userId: string): Promise<Role> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+  return (data?.role as Role) ?? "user";
+}
+
 export const useAuth = create<AuthState>((set) => ({
   user: null,
 
-  loadSession: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
+  initialize: async () => {
+    // 1) Mevcut session’ı oku
+    const { data } = await supabase.auth.getSession();
+    const sess = data.session;
+    if (!sess) {
       set({ user: null });
+    } else {
+      const role = await fetchProfileRole(sess.user.id);
+      set({
+        user: { id: sess.user.id, email: sess.user.email!, role },
+      });
+    }
+
+    // 2) Sonradan oturum değişirse store’u güncelle
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) {
+        set({ user: null });
+      } else {
+        const role = await fetchProfileRole(session.user.id);
+        set({
+          user: { id: session.user.id, email: session.user.email!, role },
+        });
+      }
+    });
+  },
+
+ login: async (email, password) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),   // boşlukları temizle
+    password,
+  });
+
+  if (error) {
+    const msg = error.message || "Giriş yapılamadı.";
+    if (msg.toLowerCase().includes("email not confirmed")) {
+      alert("E-posta doğrulanmamış. Lütfen gelen kutunu kontrol et.");
+    } else {
+      alert("E-posta veya şifre hatalı.");
+    }
+    return;
+  }
+
+  // profil oku
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("user_id", data.user.id)
+    .single();
+
+  set({
+    user: {
+      id: data.user.id,
+      email: data.user.email!,
+      role: prof?.role ?? "user",
+    },
+  });
+},
+
+ register: async (email, password) => {
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) {
+    // Eğer eposta zaten kayıtlı ise
+    if (error.message.toLowerCase().includes("already registered")) {
+      alert("Bu e-posta ile zaten kayıt yapılmış. Lütfen giriş yapmayı deneyin.");
       return;
     }
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", session.user.id)
-      .single();
 
-    set({
-      user: {
-        id: session.user.id,
-        email: session.user.email || "",
-        role: (prof?.role as Role) ?? "user",
-      },
-    });
-  },
+    // Diğer hatalar
+    alert(error.message || "Kayıt sırasında bir hata oluştu.");
+    return;
+  }
 
-  login: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
+  // Eğer kayıt oldu ama e-posta doğrulama gerekiyor ise
+  if (!data.session) {
+    alert("Kayıt başarılı. Lütfen e-postanı doğruladıktan sonra giriş yap.");
+    return;
+  }
 
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .single();
+  // Profil tablosuna kullanıcı rolü kaydet
+  await supabase.from("profiles").insert({
+    user_id: data.user!.id,
+    role: "user",
+  });
 
-    set({
-      user: {
-        id: data.user.id,
-        email: data.user.email || "",
-        role: (prof?.role as Role) ?? "user",
-      },
-    });
-  },
+  set({
+    user: {
+      id: data.user!.id,
+      email: data.user!.email!,
+      role: "user",
+    },
+  });
+},
 
-  register: async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-
-    // Varsayılan profil oluştur
-    await supabase
-      .from("profiles")
-      .insert({ user_id: data.user!.id, role: "user" });
-
-    set({
-      user: { id: data.user!.id, email: data.user!.email || "", role: "user" },
-    });
-  },
 
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null });
   },
 }));
+
 
 /** Mevcut Supabase session'dan access token'ı getirir (yoksa null). */
 export async function getToken(): Promise<string | null> {
