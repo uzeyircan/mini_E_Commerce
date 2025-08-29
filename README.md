@@ -1,4 +1,4 @@
-# 🛍️ Mini E-Commerce Platform
+# 🛍️ Mini E-Commerce Platform (React + Vite + TypeScript)
 
 A full-featured e-commerce application developed with modern technology, featuring React + Vite + TypeScript + Zustand + Supabase + Node.js/Express.
 
