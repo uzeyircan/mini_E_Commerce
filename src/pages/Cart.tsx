@@ -7,8 +7,10 @@ export default function CartPage() {
   const { items, fetch, increase, decrease, setQty, remove, removeMany } =
     useCart();
   const { items: products, fetch: fetchProducts } = useProducts();
+
+  // ürün map
   const productMap = useMemo(
-    () => new Map(products.map((p) => [p.id, p])),
+    () => new Map(products.map((p: any) => [p.id, p])),
     [products]
   );
 
@@ -17,7 +19,7 @@ export default function CartPage() {
     fetchProducts().catch(console.error);
   }, [fetch, fetchProducts]);
 
-  // seçim
+  // seçim state'i
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const next: Record<string, boolean> = {};
@@ -42,39 +44,81 @@ export default function CartPage() {
     }
   }, [anyChecked, allChecked]);
 
+  // seçili öğeler & toplam
   const selectedItems = items.filter((i) => selected[i.product_id]);
   const selectedTotal = selectedItems.reduce((s, i) => {
     const p = productMap.get(i.product_id);
-    return s + (p?.price ?? 0) * i.qty;
+    const price = Number(p?.price ?? 0);
+    const qty = Number(i.qty ?? 1);
+    return s + price * qty;
   }, 0);
 
   // Favoriler
   const addFav = useFavorites((s) => s.add);
   const favItems = useFavorites((s) => s.items);
-  const removeFavLocal = useFavorites((s) => s.remove); // listede kaldırmak için de kullanılır
+  const removeFavLocal = useFavorites((s) => s.remove);
 
-  // Kaldır modal
+  // Tekli kaldırma modal state
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const closeConfirm = () => setConfirmId(null);
 
+  // Toplu kaldırma modal state
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  // Tekli kaldırma: opsiyonel favorile
   const handleRemove = async (productId: string, alsoFavorite: boolean) => {
     const p = productMap.get(productId);
     if (alsoFavorite && p) {
-      await addFav({ product_id: p.id }); // title/price istersen zenginleştir
+      await addFav({
+        product_id: p.id,
+        title: p.title,
+        price: p.price,
+        image: p.image ?? null,
+      }).catch(console.error);
     }
     await remove(productId);
     closeConfirm();
   };
 
+  // Toplu kaldırma: opsiyonel favorile
+  const handleBulkRemove = async (alsoFavorite: boolean) => {
+    const ids = selectedItems.map((i) => i.product_id);
+    if (ids.length === 0) {
+      setBulkOpen(false);
+      return;
+    }
+
+    if (alsoFavorite) {
+      for (const id of ids) {
+        const p = productMap.get(id);
+        if (p) {
+          await addFav({
+            product_id: p.id,
+            title: p.title,
+            price: p.price,
+            image: p.image ?? null,
+          }).catch(console.error);
+        }
+      }
+    }
+
+    await removeMany(ids);
+    setSelected({});
+    setBulkOpen(false);
+  };
+
+  // Satın alma simülasyonu
   const onPurchase = async () => {
     if (selectedItems.length === 0) {
       alert("Satın almak için en az bir ürünü seçin.");
       return;
     }
     await removeMany(selectedItems.map((i) => i.product_id));
+    setSelected({});
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
 
+  // Boş sepet
   if (items.length === 0) {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
@@ -85,9 +129,12 @@ export default function CartPage() {
     );
   }
 
+  // Tekli onay modalı için ürün detayı
   const confirmImage = confirmId ? productMap.get(confirmId)?.image : undefined;
   const confirmTitle = confirmId ? productMap.get(confirmId)?.title ?? "" : "";
-  const confirmPrice = confirmId ? productMap.get(confirmId)?.price ?? 0 : 0;
+  const confirmPrice = confirmId
+    ? Number(productMap.get(confirmId)?.price ?? 0)
+    : 0;
 
   return (
     <div
@@ -122,15 +169,15 @@ export default function CartPage() {
           <span>Tümünü seç</span>
         </label>
 
-        {allChecked && (
-          <button
-            className="btn btn--ghost"
-            onClick={() => removeMany(items.map((i) => i.product_id))}
-            style={{ borderColor: "#ef4444", color: "#b91c1c", marginLeft: 8 }}
-          >
-            Tümünü Kaldır
-          </button>
-        )}
+        {/* Seçilenleri kaldır (toplu onay modalı açar) */}
+        <button
+          className="btn btn--ghost"
+          disabled={selectedItems.length === 0}
+          onClick={() => setBulkOpen(true)}
+          style={{ marginLeft: 8 }}
+        >
+          Seçilenleri Kaldır
+        </button>
 
         <span style={{ marginLeft: "auto", color: "#6b7280" }}>
           Seçili: {selectedItems.length} ürün — Toplam:{" "}
@@ -162,7 +209,8 @@ export default function CartPage() {
             <tbody>
               {items.map((i) => {
                 const p = productMap.get(i.product_id);
-                const price = p?.price ?? 0;
+                const price = Number(p?.price ?? 0);
+                const qty = Number(i.qty ?? 1);
                 return (
                   <tr
                     key={i.product_id}
@@ -257,7 +305,7 @@ export default function CartPage() {
                       </div>
                     </td>
 
-                    <td>{(price * i.qty).toFixed(2)} ₺</td>
+                    <td>{(price * qty).toFixed(2)} ₺</td>
 
                     <td>
                       <button
@@ -292,10 +340,10 @@ export default function CartPage() {
         </button>
       </div>
 
-      {/* Favoriler bölümü */}
+      {/* Favoriler bölümü (boş sepette de gösteriliyor) */}
       <FavoritesSection favs={favItems} removeFav={removeFavLocal} />
 
-      {/* Kaldırma Modalı */}
+      {/* Tekli Kaldırma Modalı */}
       {confirmId && (
         <ConfirmRemoveModal
           title={confirmTitle}
@@ -306,9 +354,22 @@ export default function CartPage() {
           onRemoveAndFav={() => handleRemove(confirmId, true)}
         />
       )}
+
+      {/* Toplu Kaldırma Modalı */}
+      {bulkOpen && (
+        <ConfirmBulkRemoveModal
+          count={selectedItems.length}
+          total={selectedTotal}
+          onClose={() => setBulkOpen(false)}
+          onRemove={() => handleBulkRemove(false)}
+          onRemoveAndFav={() => handleBulkRemove(true)}
+        />
+      )}
     </div>
   );
 }
+
+/* ----------------- Alt Bileşenler ----------------- */
 
 function FavoritesSection({
   favs,
@@ -375,7 +436,7 @@ function ConfirmRemoveModal({
       aria-modal="true"
       onClick={onClose}
     >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {image && (
             <img
@@ -410,6 +471,61 @@ function ConfirmRemoveModal({
           </button>
           <button className="btn btn--ghost" onClick={onRemove}>
             Kaldır
+          </button>
+          <button className="btn btn--primary" onClick={onRemoveAndFav}>
+            Kaldır ve Favorilere Ekle
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmBulkRemoveModal({
+  count,
+  total,
+  onClose,
+  onRemove,
+  onRemoveAndFav,
+}: {
+  count: number;
+  total: number;
+  onClose: () => void;
+  onRemove: () => void;
+  onRemoveAndFav: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="modal__backdrop"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0 }}>Seçilenleri Kaldır</h3>
+        <p style={{ marginTop: 8, color: "#374151" }}>
+          {count} ürün kaldırılacak. Toplam {total.toFixed(2)} ₺. <br />
+          Favorilere de eklemek ister misiniz?
+        </p>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            justifyContent: "flex-end",
+            marginTop: 12,
+          }}
+        >
+          <button className="btn btn--ghost" onClick={onClose}>
+            Vazgeç
+          </button>
+          <button className="btn btn--ghost" onClick={onRemove}>
+            Sadece Kaldır
           </button>
           <button className="btn btn--primary" onClick={onRemoveAndFav}>
             Kaldır ve Favorilere Ekle
