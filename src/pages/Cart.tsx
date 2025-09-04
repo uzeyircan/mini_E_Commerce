@@ -2,22 +2,31 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/store/cart";
 import { useProducts } from "@/store/product";
 import { useFavorites } from "@/store/favorites";
+import { useAuth } from "@/store/auth";
 
 export default function CartPage() {
-  const { items, fetch, increase, decrease, setQty, remove, removeMany } =
+  const { user, isHydrated } = useAuth();
+
+  // Sepet store
+  const { items, fetch, increase, decrease, setQty, remove, removeMany, add } =
     useCart();
+
+  // Ürün store
   const { items: products, fetch: fetchProducts } = useProducts();
 
-  // ürün map
+  // Ürün map (id -> ürün)
   const productMap = useMemo(
     () => new Map(products.map((p: any) => [p.id, p])),
     [products]
   );
 
+  // ⚠️ Auth hidrasyonu tamamlanmadan veri çekme!
   useEffect(() => {
+    if (!isHydrated) return; // henüz oturum durumu net değil
+    if (!user) return; // misafir ise sepet fetch etme
     fetch().catch(console.error);
     fetchProducts().catch(console.error);
-  }, [fetch, fetchProducts]);
+  }, [isHydrated, user, fetch, fetchProducts]);
 
   // seçim state'i
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -53,7 +62,7 @@ export default function CartPage() {
     return s + price * qty;
   }, 0);
 
-  // Favoriler
+  // Favoriler store
   const addFav = useFavorites((s) => s.add);
   const favItems = useFavorites((s) => s.items);
   const removeFavLocal = useFavorites((s) => s.remove);
@@ -118,13 +127,46 @@ export default function CartPage() {
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
 
+  // ⛔ Auth henüz netleşmediyse hiçbir şey gösterme (skeleton koymak istersen burası)
+  if (!isHydrated) {
+    return (
+      <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
+        <h1>Sepet</h1>
+      </div>
+    );
+  }
+
+  // 👤 Misafir ise: login'e yönlendirme YOK; sade bilgilendirme
+  if (!user) {
+    return (
+      <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
+        <h1>Sepet</h1>
+        <p className="muted">Sepete erişmek için lütfen giriş yapınız.</p>
+      </div>
+    );
+  }
+
   // Boş sepet
   if (items.length === 0) {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
         <h1>Sepet</h1>
         <p className="muted">Sepetiniz boş.</p>
-        <FavoritesSection favs={favItems} removeFav={removeFavLocal} />
+        {/* Boş sepet görünümünde de Favoriler */}
+        <FavoritesSection
+          favs={favItems}
+          removeFav={removeFavLocal}
+          productMap={productMap}
+          cartItems={items}
+          onAddToCart={async (pid) => {
+            const inCart = items.find((ci) => ci.product_id === pid);
+            if (inCart) {
+              await increase(pid);
+            } else {
+              await add({ id: pid }, 1);
+            }
+          }}
+        />
       </div>
     );
   }
@@ -169,7 +211,6 @@ export default function CartPage() {
           <span>Tümünü seç</span>
         </label>
 
-        {/* Seçilenleri kaldır (toplu onay modalı açar) */}
         <button
           className="btn btn--ghost"
           disabled={selectedItems.length === 0}
@@ -241,7 +282,7 @@ export default function CartPage() {
                       {p?.image && (
                         <img
                           src={p.image}
-                          alt=""
+                          alt={p?.title ?? ""}
                           style={{
                             width: 56,
                             height: 56,
@@ -340,10 +381,23 @@ export default function CartPage() {
         </button>
       </div>
 
-      {/* Favoriler bölümü (boş sepette de gösteriliyor) */}
-      <FavoritesSection favs={favItems} removeFav={removeFavLocal} />
+      {/* Favoriler */}
+      <FavoritesSection
+        favs={favItems}
+        removeFav={removeFavLocal}
+        productMap={productMap}
+        cartItems={items}
+        onAddToCart={(pid) => {
+          const inCart = items.find((ci) => ci.product_id === pid);
+          if (inCart) {
+            increase(pid);
+          } else {
+            add({ id: pid }, 1);
+          }
+        }}
+      />
 
-      {/* Tekli Kaldırma Modalı */}
+      {/* Modallar */}
       {confirmId && (
         <ConfirmRemoveModal
           title={confirmTitle}
@@ -355,7 +409,6 @@ export default function CartPage() {
         />
       )}
 
-      {/* Toplu Kaldırma Modalı */}
       {bulkOpen && (
         <ConfirmBulkRemoveModal
           count={selectedItems.length}
@@ -369,41 +422,129 @@ export default function CartPage() {
   );
 }
 
-/* ----------------- Alt Bileşenler ----------------- */
+/* ----------------- Alt Bileşenler (aynı kaldı) ----------------- */
 
 function FavoritesSection({
   favs,
   removeFav,
+  productMap,
+  cartItems,
+  onAddToCart,
 }: {
   favs: Record<string, { product_id: string }>;
   removeFav: (id: string) => Promise<void>;
+  productMap: Map<
+    string,
+    { id: string; title?: string; price?: number; image?: string | null }
+  >;
+  cartItems: Array<{ product_id: string; qty: number }>;
+  onAddToCart: (productId: string) => void;
 }) {
   const list = Object.values(favs);
   if (list.length === 0) return null;
 
+  const cartQtyMap = useMemo(
+    () => new Map(cartItems.map((ci) => [ci.product_id, ci.qty])),
+    [cartItems]
+  );
+
+  const formatPrice = (n: number) =>
+    Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency: "TRY",
+      maximumFractionDigits: 2,
+    }).format(n);
+
   return (
     <div className="card" style={{ display: "grid", gap: 12 }}>
       <h2 style={{ margin: 0 }}>Favoriler</h2>
-      {list.map((f) => (
-        <div
-          key={f.product_id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            borderTop: "1px solid #e5e7eb",
-            paddingTop: 12,
-          }}
-        >
-          <div style={{ flex: 1 }}>Ürün ID: {f.product_id}</div>
-          <button
-            className="btn btn--primary"
-            onClick={() => removeFav(f.product_id)}
-          >
-            Kaldır
-          </button>
-        </div>
-      ))}
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        }}
+      >
+        {list.map((f) => {
+          const p = productMap.get(f.product_id);
+          const qtyInCart = cartQtyMap.get(f.product_id) ?? 0;
+          const price = Number(p?.price ?? 0);
+
+          return (
+            <div
+              key={f.product_id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "72px 1fr auto",
+                gap: 12,
+                alignItems: "center",
+                borderTop: "1px solid #e5e7eb",
+                paddingTop: 12,
+              }}
+            >
+              <div>
+                {p?.image ? (
+                  <img
+                    src={p.image}
+                    alt={p?.title ?? ""}
+                    style={{
+                      width: 72,
+                      height: 72,
+                      objectFit: "cover",
+                      borderRadius: 10,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 10,
+                      background: "#e5e7eb",
+                    }}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontWeight: 600 }}>
+                  {p?.title ?? `Ürün #${f.product_id}`}
+                </div>
+                <div style={{ color: "#0f766e", fontWeight: 600 }}>
+                  {formatPrice(price)}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => removeFav(f.product_id)}
+                >
+                  Kaldır
+                </button>
+                <button
+                  className="btn btn--primary"
+                  onClick={() => onAddToCart(f.product_id)}
+                  title={
+                    qtyInCart > 0 ? `Sepette: ${qtyInCart}` : "Sepete ekle"
+                  }
+                >
+                  {qtyInCart > 0 ? "Sepete Ekle (+1)" : "Sepete Ekle"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .card > div[style*="grid-template-columns: repeat(2"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -452,7 +593,12 @@ function ConfirmRemoveModal({
           )}
           <div>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
-            <div style={{ color: "#111" }}>{price.toFixed(2)} ₺</div>
+            <div style={{ color: "#111" }}>
+              {Intl.NumberFormat("tr-TR", {
+                style: "currency",
+                currency: "TRY",
+              }).format(price)}
+            </div>
           </div>
         </div>
         <p style={{ marginTop: 12, color: "#374151" }}>
@@ -510,8 +656,14 @@ function ConfirmBulkRemoveModal({
       <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0 }}>Seçilenleri Kaldır</h3>
         <p style={{ marginTop: 8, color: "#374151" }}>
-          {count} ürün kaldırılacak. Toplam {total.toFixed(2)} ₺. <br />
-          Favorilere de eklemek ister misiniz?
+          {count} ürün kaldırılacak. Toplam{" "}
+          {Intl.NumberFormat("tr-TR", {
+            style: "currency",
+            currency: "TRY",
+            maximumFractionDigits: 2,
+          }).format(total)}
+          .
+          <br /> Favorilere de eklemek ister misiniz?
         </p>
         <div
           style={{

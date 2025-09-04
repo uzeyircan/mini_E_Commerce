@@ -19,10 +19,23 @@ function NotFound() {
 
 export default function App() {
   const initialize = useAuth((s) => s.initialize);
+  const isHydrated = useAuth((s) => s.isHydrated); // ← auth durumu netleşti mi?
 
   useEffect(() => {
     initialize(); // sayfa yenilense bile kullanıcıyı tekrar yükler
   }, [initialize]);
+
+  // Auth hidrasyonu tamamlanana kadar ProtectedRoute tetiklenmesin
+  if (!isHydrated) {
+    return (
+      <>
+        <Header />
+        <div style={{ padding: 24, maxWidth: 1120, margin: "0 auto" }}>
+          <p className="muted">Yükleniyor…</p>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

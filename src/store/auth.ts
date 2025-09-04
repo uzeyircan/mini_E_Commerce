@@ -5,7 +5,9 @@ type Role = "user" | "admin";
 type User = { id: string; email: string; role: Role };
 
 type AuthState = {
+  isHydrated: any;
   user: User | null;
+  
   // yeni: init ve auth state dinleyicisi
   initialize: () => Promise<void>;
   // mevcut action'ların
@@ -24,6 +26,7 @@ async function fetchProfileRole(userId: string): Promise<Role> {
 }
 
 export const useAuth = create<AuthState>((set) => ({
+  isHydrated: false,
   user: null,
 
   initialize: async () => {
@@ -31,22 +34,24 @@ export const useAuth = create<AuthState>((set) => ({
     const { data } = await supabase.auth.getSession();
     const sess = data.session;
     if (!sess) {
-      set({ user: null });
+      set({ user: null, isHydrated: true });
     } else {
       const role = await fetchProfileRole(sess.user.id);
       set({
         user: { id: sess.user.id, email: sess.user.email!, role },
+        isHydrated: true,
       });
     }
 
     // 2) Sonradan oturum değişirse store’u güncelle
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session) {
-        set({ user: null });
+        set({ user: null, isHydrated: true });
       } else {
         const role = await fetchProfileRole(session.user.id);
         set({
           user: { id: session.user.id, email: session.user.email!, role },
+          isHydrated: true,
         });
       }
     });
@@ -60,8 +65,8 @@ export const useAuth = create<AuthState>((set) => ({
 
   if (error) {
     const msg = error.message || "Giriş yapılamadı.";
-    if (msg.toLowerCase().includes("email not confirmed")) {
-      alert("E-posta doğrulanmamış. Lütfen gelen kutunu kontrol et.");
+    if (msg.toLowerCase().includes("Mail onaylanmadı")) {
+      alert("E-posta doğrulanmamış. Lütfen mail kutunu kontrol et.");
     } else {
       alert("E-posta veya şifre hatalı.");
     }
