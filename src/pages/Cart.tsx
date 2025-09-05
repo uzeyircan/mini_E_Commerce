@@ -19,14 +19,23 @@ export default function CartPage() {
     () => new Map(products.map((p: any) => [p.id, p])),
     [products]
   );
+  // Favoriler store
+  const addFav = useFavorites((s) => s.add);
+  const favItems = useFavorites((s) => s.items);
+  const removeFavLocal = useFavorites((s) => s.remove);
+  const fetchFavs = useFavorites((s) => s.fetch); // <-- favorileri yüklemek için
+  //   // Tekli kaldırma modal state
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const closeConfirm = () => setConfirmId(null);
 
   // ⚠️ Auth hidrasyonu tamamlanmadan veri çekme!
   useEffect(() => {
-    if (!isHydrated) return; // henüz oturum durumu net değil
-    if (!user) return; // misafir ise sepet fetch etme
+    if (!isHydrated) return; // auth durumu netleşmeden hiçbir çağrı yapma
+    if (!user) return; // (cart route zaten protected ama yine de koruyalım)
     fetch().catch(console.error);
     fetchProducts().catch(console.error);
-  }, [isHydrated, user, fetch, fetchProducts]);
+    fetchFavs?.().catch?.(console.error); // <-- favorileri de çek!
+  }, [isHydrated, user, fetch, fetchProducts, fetchFavs]);
 
   // seçim state'i
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -61,15 +70,6 @@ export default function CartPage() {
     const qty = Number(i.qty ?? 1);
     return s + price * qty;
   }, 0);
-
-  // Favoriler store
-  const addFav = useFavorites((s) => s.add);
-  const favItems = useFavorites((s) => s.items);
-  const removeFavLocal = useFavorites((s) => s.remove);
-
-  // Tekli kaldırma modal state
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const closeConfirm = () => setConfirmId(null);
 
   // Toplu kaldırma modal state
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -437,6 +437,7 @@ function FavoritesSection({
     string,
     { id: string; title?: string; price?: number; image?: string | null }
   >;
+
   cartItems: Array<{ product_id: string; qty: number }>;
   onAddToCart: (productId: string) => void;
 }) {
