@@ -11,24 +11,22 @@ export function useFavoritesWithProducts() {
     [products]
   );
 
-  const enriched = useMemo(
-    () =>
-      favs.map((f) => {
-        const p = productMap.get(f.product_id);
-        return {
-          product_id: f.product_id,
-          product: p
-            ? {
-                id: p.id,
-                title: p.title,
-                price: p.price,
-                image: p.image,
-              }
-            : undefined,
-        };
-      }),
-    [favs, productMap]
-  );
+  const enriched = useMemo(() => {
+    return Object.values(favs).map((f: { product_id: string }) => {
+      const p = productMap.get(f.product_id);
+      return {
+        product_id: f.product_id,
+        product: p
+          ? {
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              image: p.image,
+            }
+          : undefined,
+      };
+    });
+  }, [favs, productMap]);
 
   return enriched;
 }
