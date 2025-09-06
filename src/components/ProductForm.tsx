@@ -12,6 +12,7 @@ export default function ProductForm({ edit, onDone }: Props) {
   const [image, setImage] = useState("");
   const [stock, setStock] = useState<number | "">("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (edit) {
@@ -29,9 +30,12 @@ export default function ProductForm({ edit, onDone }: Props) {
     }
   }, [edit]);
 
-  function onSubmit(e: FormEvent) {
+  const submitDisabled =
+    loading || !title.trim() || price === "" || Number(price) < 0;
+
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!title || price === "" || Number(price) < 0) return;
+    if (submitDisabled) return;
 
     const payload = {
       title: title.trim(),
@@ -41,25 +45,42 @@ export default function ProductForm({ edit, onDone }: Props) {
       description: description.trim() || undefined,
     };
 
-    if (edit) update(edit.id, payload);
-    else add(payload);
+    setLoading(true);
+    try {
+      if (edit) {
+        await update(edit.id, payload);
+      } else {
+        await add(payload);
+      }
 
-    onDone?.();
-
-    if (!edit) {
-      setTitle("");
-      setPrice("");
-      setImage("");
-      setStock("");
-      setDescription("");
+      // Başarı: formu temizle (edit yoksa) ve parent'a haber ver
+      if (!edit) {
+        setTitle("");
+        setPrice("");
+        setImage("");
+        setStock("");
+        setDescription("");
+      }
+      onDone?.();
+    } catch (err: any) {
+      console.error("ProductForm submit error:", err);
+      alert(err?.message || "İşlem sırasında bir hata oluştu.");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="card form-grid">
       <div className="form-head">
-        <h2 className="form-title">{edit ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}</h2>
-        {!edit && <span className="form-hint">Zorunlu alanlar <span className="req">*</span> ile işaretlidir.</span>}
+        <h2 className="form-title">
+          {edit ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
+        </h2>
+        {!edit && (
+          <span className="form-hint">
+            Zorunlu alanlar <span className="req">*</span> ile işaretlidir.
+          </span>
+        )}
       </div>
 
       {/* Başlık */}
@@ -98,7 +119,9 @@ export default function ProductForm({ edit, onDone }: Props) {
             placeholder="0.00"
           />
         </div>
-        <small className="help">Ondalık için nokta/virgül kullanabilirsiniz.</small>
+        <small className="help">
+          Ondalık için nokta/virgül kullanabilirsiniz.
+        </small>
       </div>
 
       {/* Görsel URL */}
@@ -111,7 +134,9 @@ export default function ProductForm({ edit, onDone }: Props) {
           placeholder="https://…"
           inputMode="url"
         />
-        <small className="help">CDN/Barındırma linki (Cloudinary, GitHub Raw, vb.).</small>
+        <small className="help">
+          CDN/Barındırma linki (Cloudinary, GitHub Raw, vb.).
+        </small>
       </div>
 
       {/* Stok */}
@@ -127,7 +152,9 @@ export default function ProductForm({ edit, onDone }: Props) {
           }
           placeholder="Örn: 20"
         />
-        <small className="help">Boş bırakılırsa “stok belirtilmedi” kabul edilir.</small>
+        <small className="help">
+          Boş bırakılırsa “stok belirtilmedi” kabul edilir.
+        </small>
       </div>
 
       {/* Açıklama */}
@@ -145,12 +172,27 @@ export default function ProductForm({ edit, onDone }: Props) {
       {/* Aksiyonlar */}
       <div className="actions">
         {onDone && (
-          <button type="button" className="btn btn--ghost" onClick={onDone}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onDone}
+            disabled={loading}
+          >
             İptal
           </button>
         )}
-        <button className="btn btn--primary" type="submit">
-          {edit ? "Kaydet" : "Ekle"}
+        <button
+          className="btn btn--primary"
+          type="submit"
+          disabled={submitDisabled}
+        >
+          {loading
+            ? edit
+              ? "Kaydediliyor…"
+              : "Ekleniyor…"
+            : edit
+            ? "Kaydet"
+            : "Ekle"}
         </button>
       </div>
     </form>

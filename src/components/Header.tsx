@@ -11,8 +11,8 @@ function formatTRY(n: number) {
 }
 
 export default function Header() {
-  const { count } = useCart();
-  const { user, logout } = useAuth();
+  const { count, fetch, clearLocal } = useCart();
+  const { user, logout, isHydrated } = useAuth();
   const { items: favMap, fetch: fetchFavs, remove: removeFav } = useFavorites();
   const { items: products, fetch: fetchProducts } = useProducts();
 
@@ -20,6 +20,12 @@ export default function Header() {
 
   const [openMobile, setOpenMobile] = useState(false);
   const [openFav, setOpenFav] = useState(false);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (user) fetch().catch(console.error);
+    else clearLocal();
+  }, [isHydrated, user, fetch, clearLocal]);
 
   // route değişince menüleri kapat
   useEffect(() => {

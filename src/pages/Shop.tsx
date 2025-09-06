@@ -126,7 +126,7 @@ export default function Shop() {
                 <button
                   className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
                   onClick={() => toggleFav(p.id)}
-                  title={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
+                  title={isFav ? "Favorilerden çıkar " : "Favorilere ekle"}
                 >
                   <span
                     style={{
@@ -142,7 +142,7 @@ export default function Shop() {
                         d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z"
                       />
                     </svg>
-                    {isFav ? "Favoride" : "Favori"}
+                    {isFav ? "Favoride" : "Favorile"}
                   </span>
                 </button>
               </div>

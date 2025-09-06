@@ -19,6 +19,12 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFormDone = async () => {
+    setEditing(null);
+    // ✅ Ürün eklendi/düzenlendiğinde listeyi tazele
+    await fetch().catch(console.error);
+  };
+
   return (
     <div
       style={{
@@ -32,7 +38,8 @@ export default function AdminDashboard() {
       <h1>Admin Panel</h1>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 2fr", gap: 16 }}>
-        <ProductForm edit={editing} onDone={() => setEditing(null)} />
+        {/* ProductForm: onDone olduğunda listeyi yeniliyoruz */}
+        <ProductForm edit={editing} onDone={handleFormDone} />
 
         <div className="card" style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -69,7 +76,7 @@ export default function AdminDashboard() {
                     )}
                     <div>{p.title}</div>
                   </td>
-                  <td>{p.price.toFixed(2)} ₺</td>
+                  <td>{Number(p.price).toFixed(2)} ₺</td>
                   <td>{p.stock ?? "-"}</td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
