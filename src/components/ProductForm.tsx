@@ -1,3 +1,4 @@
+// src/components/ProductForm.tsx
 import { FormEvent, useEffect, useState } from "react";
 import { Product, useProducts } from "@/store/product";
 import { useCategories } from "@/store/category";
@@ -5,27 +6,31 @@ import { useCategories } from "@/store/category";
 type Props = { edit?: Product | null; onDone?: () => void };
 
 export default function ProductForm({ edit, onDone }: Props) {
+  // products store
   const add = useProducts((s) => s.add);
   const update = useProducts((s) => s.update);
+  const fetchProducts = useProducts((s) => s.fetch); // insert sonrası listeyi yenilemek için
 
+  // categories store
+  const fetchCats = useCategories((s) => s.fetch);
+  const ensureCat = useCategories((s) => s.ensureByName);
+  const cats = useCategories((s) => s.items);
+
+  // form state
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number | "">("");
   const [image, setImage] = useState("");
   const [stock, setStock] = useState<number | "">("");
   const [description, setDescription] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Kategoriler
-  const fetchCats = useCategories((s) => s.fetch);
-  const ensureCat = useCategories((s) => s.ensureByName);
-  const cats = useCategories((s) => s.items);
-  const [categoryName, setCategoryName] = useState("");
-
-  // ✅ YENİ: Kategori listesini yükle (datalist önerileri için)
+  // Kategori önerileri (datalist) için
   useEffect(() => {
     fetchCats().catch(console.error);
   }, [fetchCats]);
 
+  // Edit modunda formu doldur
   useEffect(() => {
     if (edit) {
       setTitle(edit.title);
@@ -33,7 +38,6 @@ export default function ProductForm({ edit, onDone }: Props) {
       setImage(edit.image || "");
       setStock(edit.stock ?? "");
       setDescription(edit.description || "");
-      // ✅ YENİ: Edit modunda kategori adını doldur (join yoksa id→ad sözlüğüyle)
       const nameFromJoin = edit.category_name || "";
       const nameFromId = edit.category_id
         ? cats[edit.category_id]?.name || ""
@@ -45,22 +49,25 @@ export default function ProductForm({ edit, onDone }: Props) {
       setImage("");
       setStock("");
       setDescription("");
-      setCategoryName(""); // ✅ YENİ: yeni kayıtta temizle
+      setCategoryName("");
     }
   }, [edit, cats]);
 
   const submitDisabled =
     loading || !title.trim() || price === "" || Number(price) < 0;
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  // Form submit yerine buton tıklamasıyla yönetiyoruz (daha deterministik)
+  async function handleSave(e?: FormEvent) {
+    e?.preventDefault();
+
+    if (loading) return; // çifte tıklama kilidi
     if (submitDisabled) return;
 
-    // ✅ YENİ: kategori id’sini garanti altına al (yeni isimse oluştur)
-    let category_id: string | undefined = undefined;
+    // Kategori id’sini garanti et (yeni isimse oluştur)
+    let category_id: string | null = null;
     if (categoryName.trim()) {
       try {
-        category_id = await ensureCat(categoryName);
+        category_id = await ensureCat(categoryName.trim());
       } catch (err) {
         console.error(err);
         alert("Kategori oluşturulurken hata oluştu.");
@@ -74,20 +81,25 @@ export default function ProductForm({ edit, onDone }: Props) {
       image: image.trim() || null,
       stock: stock === "" ? null : Number(stock),
       description: description.trim() || null,
-      category_id: category_id ?? null, // ✅ YENİ: DB'ye yazılacak
-      category_name: null, // not: select sonrası JOIN ile otomatik dolacak
+      category_id,
     };
 
     setLoading(true);
+
+    // Güvenlik zamanlayıcı: olası takılmalarda yüklemeyi düşür
+    const safety = setTimeout(() => {
+      setLoading(false);
+      alert("İstek gecikti. Lütfen tekrar deneyin.");
+    }, 8000);
+
     try {
       if (edit) {
         await update(edit.id, payload);
       } else {
         await add(payload);
-      }
-
-      // Başarı: formu temizle (edit yoksa) ve parent'a haber ver
-      if (!edit) {
+        // Bazı ortamlarda insert sonrası satır dönmeyebilir; listeyi zorunlu tazele
+        await fetchProducts();
+        // yeni kayıt akışında formu temizle
         setTitle("");
         setPrice("");
         setImage("");
@@ -97,15 +109,17 @@ export default function ProductForm({ edit, onDone }: Props) {
       }
       onDone?.();
     } catch (err: any) {
-      console.error("ProductForm submit error:", err);
+      console.error("ProductForm save error:", err);
       alert(err?.message || "İşlem sırasında bir hata oluştu.");
     } finally {
+      clearTimeout(safety);
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="card form-grid">
+    // noValidate: tarayıcı HTML5 doğrulaması submit’i sessizce engellemesin
+    <form className="card form-grid" noValidate>
       <div className="form-head">
         <h2 className="form-title">
           {edit ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}
@@ -126,7 +140,6 @@ export default function ProductForm({ edit, onDone }: Props) {
           className="input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          required
           placeholder="Örn: Basic T-Shirt"
         />
         <small className="help">Kısa, açıklayıcı bir isim kullanın.</small>
@@ -149,7 +162,6 @@ export default function ProductForm({ edit, onDone }: Props) {
             onChange={(e) =>
               setPrice(e.target.value === "" ? "" : Number(e.target.value))
             }
-            required
             placeholder="0.00"
           />
         </div>
@@ -191,7 +203,7 @@ export default function ProductForm({ edit, onDone }: Props) {
         </small>
       </div>
 
-      {/* ✅ YENİ: Serbest yazılabilir Kategori adı (datalist ile öneri) */}
+      {/* Kategori (serbest yazılabilir + datalist) */}
       <div className="field">
         <label className="label">Kategori</label>
         <input
@@ -225,8 +237,11 @@ export default function ProductForm({ edit, onDone }: Props) {
         />
       </div>
 
-      {/* Aksiyonlar */}
-      <div className="actions">
+      {/* Aksiyonlar (tek buton, tıklama ile kaydet) */}
+      <div
+        className="actions"
+        style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
+      >
         {onDone && (
           <button
             type="button"
@@ -238,8 +253,9 @@ export default function ProductForm({ edit, onDone }: Props) {
           </button>
         )}
         <button
+          type="button"
           className="btn btn--primary"
-          type="submit"
+          onClick={handleSave}
           disabled={submitDisabled}
         >
           {loading

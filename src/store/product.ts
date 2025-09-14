@@ -54,10 +54,12 @@ export const useProducts = create<State>((set, get) => ({
   fetch: async () => {
     const { data, error } = await supabase
       .from("products")
-      .select(`
+      .select(
+        `
         id, title, price, image, stock, description, category_id,
         categories ( name )
-      `)
+      `
+      )
       .order("created_at", { ascending: false });
     if (error) throw error;
 
@@ -67,21 +69,27 @@ export const useProducts = create<State>((set, get) => ({
 
   // Ürün ekle (category_id dahil), eklenen kaydı JOIN ile geri al
   add: async (p) => {
-    const payload = toWritable(p);
-
+    const payload = toWritable(p); // ✅ filtrele
     const { data, error } = await supabase
       .from("products")
-      .insert(payload)
-      .select(`
-        id, title, price, image, stock, description, category_id,
-        categories ( name )
-      `)
-      .single();
+      .insert(p)
+      .select(
+        `
+      id, title, price, image, stock, description, category_id,
+      categories ( name )
+    `
+      )
+      .maybeSingle(); // ✅ single yerine
 
     if (error) throw error;
 
-    const inserted = mapRowToProduct(data);
-    set({ items: [inserted, ...get().items] });
+    if (data) {
+      const inserted = mapRowToProduct(data);
+      set({ items: [inserted, ...get().items] });
+    } else {
+      // ✅ Her ihtimale karşı listeyi tazele
+      await get().fetch();
+    }
   },
 
   // Ürün güncelle (category_id dahil), güncellenen kaydı JOIN ile geri al
@@ -92,10 +100,12 @@ export const useProducts = create<State>((set, get) => ({
       .from("products")
       .update(payload)
       .eq("id", id)
-      .select(`
+      .select(
+        `
         id, title, price, image, stock, description, category_id,
         categories ( name )
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;

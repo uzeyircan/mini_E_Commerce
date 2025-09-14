@@ -101,11 +101,6 @@ export default function Header() {
           <NavLink to="/" end className="nav__link">
             Mağaza
           </NavLink>
-          {user?.role === "admin" && (
-            <NavLink to="/admin" className="nav__link">
-              Admin Panel
-            </NavLink>
-          )}
         </nav>
 
         {/* Sağ aksiyonlar */}
@@ -274,15 +269,6 @@ export default function Header() {
             >
               Favoriler {favCount > 0 ? `(${favCount})` : ""}
             </NavLink>
-            {user?.role === "admin" && (
-              <NavLink
-                to="/admin"
-                className="nav__link"
-                onClick={() => setOpenMobile(false)}
-              >
-                Admin Panel
-              </NavLink>
-            )}
           </nav>
 
           {!user ? (
