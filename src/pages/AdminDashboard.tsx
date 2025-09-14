@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import ProductForm from "@/components/ProductForm";
 import { useProducts, Product } from "@/store/product";
+import SalesLineChart from "@/components/charts/SalesLineChart";
 
 export default function AdminDashboard() {
   const { items, fetch, remove } = useProducts(); // 👈 remove'u al
   const [editing, setEditing] = useState<Product | null>(null);
+  const salesWeek = [
+    { label: "Pzt", value: 12 },
+    { label: "Sal", value: 18 },
+    { label: "Çar", value: 9 },
+    { label: "Per", value: 22 },
+    { label: "Cum", value: 17 },
+    { label: "Cmt", value: 14 },
+    { label: "Paz", value: 20 },
+  ];
 
   useEffect(() => {
     fetch().catch(console.error);
@@ -36,6 +46,12 @@ export default function AdminDashboard() {
       }}
     >
       <h1>Admin Panel</h1>
+      <div
+        className="card"
+        style={{ padding: 16, overflow: "hidden", marginBottom: 16 }}
+      >
+        <SalesLineChart data={salesWeek} height={140} />
+      </div>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 2fr", gap: 16 }}>
         {/* ProductForm: onDone olduğunda listeyi yeniliyoruz */}

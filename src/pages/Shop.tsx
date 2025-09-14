@@ -4,6 +4,9 @@ import { useProducts } from "@/store/product";
 import { useCart } from "@/store/cart";
 import { useFavorites } from "@/store/favorites";
 import { useAuth } from "@/store/auth";
+import FadeIn from "@/components/anim/FadeIn";
+import Aurora from "@/components/anim/Aurora";
+import { useCategories } from "@/store/category";
 
 export default function Shop() {
   const { items, fetch } = useProducts();
@@ -12,6 +15,9 @@ export default function Shop() {
   const addFav = useFavorites((s) => s.add);
   const removeFav = useFavorites((s) => s.remove);
   const fetchFavs = useFavorites((s) => s.fetch);
+
+  const cats = useCategories((s) => s.items);
+  const fetchCats = useCategories((s) => s.fetch);
 
   const { user } = useAuth();
   const nav = useNavigate();
@@ -25,7 +31,9 @@ export default function Shop() {
   useEffect(() => {
     if (user) fetchFavs().catch(console.error);
   }, [user, fetchFavs]);
-
+  useEffect(() => {
+    fetchCats().catch(console.error);
+  }, [fetchCats]);
   const requireAuth = () => {
     if (!user) {
       alert("Lütfen giriş yapınız / kayıt olunuz.");
@@ -41,12 +49,12 @@ export default function Shop() {
     setBouncingId(p.id);
     setTimeout(() => setBouncingId(null), 300);
   };
-
-  const toggleFav = async (productId: string) => {
+  // Remove this block, as 'p' is not defined in this scope
+  async function toggleFav(productId: string) {
     if (requireAuth()) return;
     if (favs[productId]) await removeFav(productId);
     else await addFav({ product_id: productId });
-  };
+  }
 
   if (!items.length) {
     return (
@@ -63,93 +71,138 @@ export default function Shop() {
   }
 
   return (
-    <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
-      <h1>Mağaza</h1>
-      <div className="grid">
-        {items.map((p) => {
-          const isFav = !!favs[p.id];
-          return (
-            <article
-              key={p.id}
-              className="card"
-              style={{ display: "grid", gap: 8 }}
-            >
-              <Link
-                to={`/product/${p.id}`}
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                {p.image ? (
-                  <img
-                    src={p.image}
-                    alt={p.title}
-                    style={{
-                      width: "100%",
-                      height: 180,
-                      objectFit: "cover",
-                      borderRadius: 12,
-                    }}
-                    loading="lazy"
-                  />
-                ) : (
-                  <div
-                    style={{
-                      height: 180,
-                      borderRadius: 12,
-                      background: "#f1f5f9",
-                      display: "grid",
-                      placeItems: "center",
-                      color: "#64748b",
-                    }}
+    // ✅ YENİ: Aurora için konum bağlamı
+    <div
+      style={{
+        maxWidth: 1120,
+        margin: "24px auto",
+        padding: "0 16px",
+        position: "relative",
+      }}
+    >
+      {/* ✅ YENİ: Sadece arka plan animasyonu (içeriğe dokunmaz) */}
+      <Aurora />
+
+      {/* ✅ YENİ: Başlık için yumuşak giriş */}
+      <FadeIn y={18}>
+        <h1>Mağaza</h1>
+      </FadeIn>
+
+      {/* ✅ YENİ: Grid tümü hafif fade-in; kartlar ayrıca tek tek animasyonlu */}
+      <FadeIn delay={0.04} y={12}>
+        <div className="grid">
+          {items.map((p, i) => {
+            const isFav = !!favs[p.id];
+            const catName = p.category_id
+              ? cats[p.category_id]?.name
+              : undefined;
+            return (
+              // ✅ YENİ: Her kart sırayla içeri aksın
+              <FadeIn key={p.id} delay={i * 0.04} y={14}>
+                <article className="card" style={{ display: "grid", gap: 8 }}>
+                  <Link
+                    to={`/product/${p.id}`}
+                    style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    Görsel yok
-                  </div>
-                )}
-                <strong
-                  style={{ fontSize: 16, display: "block", marginTop: 6 }}
-                >
-                  {p.title}
-                </strong>
-              </Link>
-
-              <span style={{ color: "#111" }}>{p.price.toFixed(2)} ₺</span>
-
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button
-                  className={`btn btn--primary ${
-                    bouncingId === p.id ? "button-bounce" : ""
-                  }`}
-                  onClick={() => handleAdd(p)}
-                >
-                  Sepete Ekle
-                </button>
-
-                <button
-                  className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
-                  onClick={() => toggleFav(p.id)}
-                  title={isFav ? "Favorilerden çıkar " : "Favorilere ekle"}
-                >
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      gap: 6,
-                      alignItems: "center",
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-                      <path
-                        fill={isFav ? "currentColor" : "none"}
-                        stroke="currentColor"
-                        d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z"
+                    {p.image ? (
+                      <img
+                        src={p.image}
+                        alt={p.title}
+                        style={{
+                          width: "100%",
+                          height: 180,
+                          objectFit: "cover",
+                          borderRadius: 12,
+                        }}
+                        loading="lazy"
                       />
-                    </svg>
-                    {isFav ? "Favoride" : "Favorile"}
-                  </span>
-                </button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                    ) : (
+                      <div
+                        style={{
+                          height: 180,
+                          borderRadius: 12,
+                          background: "#f1f5f9",
+                          display: "grid",
+                          placeItems: "center",
+                          color: "#64748b",
+                        }}
+                      >
+                        Görsel yok
+                      </div>
+                    )}
+                    <strong
+                      style={{ fontSize: 16, display: "block", marginTop: 6 }}
+                    >
+                      {p.title}
+                    </strong>
+                    {catName && (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          marginTop: 4,
+                          fontSize: 12,
+                          opacity: 0.8,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          border: "1px solid #334",
+                        }}
+                        className="muted"
+                        aria-label="Ürün kategorisi"
+                        title={`Kategori: ${catName}`}
+                      >
+                        {catName}
+                      </span>
+                    )}
+                  </Link>
+
+                  <span style={{ color: "#111" }}>{p.price.toFixed(2)} ₺</span>
+
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <button
+                      className={`btn btn--primary ${
+                        bouncingId === p.id ? "button-bounce" : ""
+                      }`}
+                      onClick={() => handleAdd(p)}
+                    >
+                      Sepete Ekle
+                    </button>
+
+                    <button
+                      className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
+                      onClick={() => toggleFav(p.id)}
+                      title={isFav ? "Favorilerden çıkar " : "Favorilere ekle"}
+                    >
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          aria-hidden
+                        >
+                          <path
+                            fill={isFav ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z"
+                          />
+                        </svg>
+                        {isFav ? "Favoride" : "Favorile"}
+                      </span>
+                    </button>
+                  </div>
+                </article>
+              </FadeIn>
+            );
+          })}
+        </div>
+      </FadeIn>
     </div>
   );
 }

@@ -14,9 +14,11 @@
     "@fortawesome/fontawesome-free": "^7.0.0",
     "@supabase/supabase-js": "^2.55.0",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
     "mdb-react-ui-kit": "^9.0.0",
     "msw": "^2.3.2",
     "react": "^18.2.0",
+    "react-bits": "^1.0.5",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.24.1",
     "zustand": "^4.5.2"

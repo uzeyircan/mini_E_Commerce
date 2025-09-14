@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Product, useProducts } from "@/store/product";
+import { useCategories } from "@/store/category";
 
 type Props = { edit?: Product | null; onDone?: () => void };
 
@@ -14,6 +15,17 @@ export default function ProductForm({ edit, onDone }: Props) {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Kategoriler
+  const fetchCats = useCategories((s) => s.fetch);
+  const ensureCat = useCategories((s) => s.ensureByName);
+  const cats = useCategories((s) => s.items);
+  const [categoryName, setCategoryName] = useState("");
+
+  // ✅ YENİ: Kategori listesini yükle (datalist önerileri için)
+  useEffect(() => {
+    fetchCats().catch(console.error);
+  }, [fetchCats]);
+
   useEffect(() => {
     if (edit) {
       setTitle(edit.title);
@@ -21,14 +33,21 @@ export default function ProductForm({ edit, onDone }: Props) {
       setImage(edit.image || "");
       setStock(edit.stock ?? "");
       setDescription(edit.description || "");
+      // ✅ YENİ: Edit modunda kategori adını doldur (join yoksa id→ad sözlüğüyle)
+      const nameFromJoin = edit.category_name || "";
+      const nameFromId = edit.category_id
+        ? cats[edit.category_id]?.name || ""
+        : "";
+      setCategoryName(nameFromJoin || nameFromId);
     } else {
       setTitle("");
       setPrice("");
       setImage("");
       setStock("");
       setDescription("");
+      setCategoryName(""); // ✅ YENİ: yeni kayıtta temizle
     }
-  }, [edit]);
+  }, [edit, cats]);
 
   const submitDisabled =
     loading || !title.trim() || price === "" || Number(price) < 0;
@@ -37,12 +56,26 @@ export default function ProductForm({ edit, onDone }: Props) {
     e.preventDefault();
     if (submitDisabled) return;
 
-    const payload = {
+    // ✅ YENİ: kategori id’sini garanti altına al (yeni isimse oluştur)
+    let category_id: string | undefined = undefined;
+    if (categoryName.trim()) {
+      try {
+        category_id = await ensureCat(categoryName);
+      } catch (err) {
+        console.error(err);
+        alert("Kategori oluşturulurken hata oluştu.");
+        return;
+      }
+    }
+
+    const payload: Omit<Product, "id"> = {
       title: title.trim(),
       price: Number(price),
-      image: image.trim() || undefined,
-      stock: stock === "" ? undefined : Number(stock),
-      description: description.trim() || undefined,
+      image: image.trim() || null,
+      stock: stock === "" ? null : Number(stock),
+      description: description.trim() || null,
+      category_id: category_id ?? null, // ✅ YENİ: DB'ye yazılacak
+      category_name: null, // not: select sonrası JOIN ile otomatik dolacak
     };
 
     setLoading(true);
@@ -60,6 +93,7 @@ export default function ProductForm({ edit, onDone }: Props) {
         setImage("");
         setStock("");
         setDescription("");
+        setCategoryName("");
       }
       onDone?.();
     } catch (err: any) {
@@ -154,6 +188,28 @@ export default function ProductForm({ edit, onDone }: Props) {
         />
         <small className="help">
           Boş bırakılırsa “stok belirtilmedi” kabul edilir.
+        </small>
+      </div>
+
+      {/* ✅ YENİ: Serbest yazılabilir Kategori adı (datalist ile öneri) */}
+      <div className="field">
+        <label className="label">Kategori</label>
+        <input
+          id="cat"
+          list="category-list"
+          value={categoryName}
+          onChange={(e) => setCategoryName(e.target.value)}
+          placeholder="Örn: Üst Giyim"
+          className="input"
+        />
+        <datalist id="category-list">
+          {Object.values(cats).map((c) => (
+            <option key={c.id} value={c.name} />
+          ))}
+        </datalist>
+        <small className="help">
+          Yeni bir isim yazarsan otomatik oluşturulur; mevcutsa o kategoriye
+          eklenir.
         </small>
       </div>
 
