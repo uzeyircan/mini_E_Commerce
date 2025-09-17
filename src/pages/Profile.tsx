@@ -31,9 +31,11 @@ type ProfileRow = {
 };
 
 export default function ProfilePage() {
-  const { user } = useAuth(); // id / email / role bizde store’da vardı
+  const { user, isHydrated } = useAuth(); // id / email / role bizde store’da vardı
   const [p, setP] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
+
+  if (!isHydrated) return null; // <- hydrate bitmeden karar verme
 
   useEffect(() => {
     if (!user) return;

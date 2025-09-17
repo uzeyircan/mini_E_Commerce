@@ -12,6 +12,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AdminDashboard from "@/pages/AdminDashboard";
 import { useEffect } from "react";
+import { RequireAdmin } from "./routes/guards";
 
 function NotFound() {
   return <div style={{ padding: 24 }}>Sayfa bulunamadı.</div>;
@@ -88,6 +89,10 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route element={<RequireAdmin />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
