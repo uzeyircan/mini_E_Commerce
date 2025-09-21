@@ -48,7 +48,6 @@ a {
   color: #1d4ed8;
 }
 
-
 .userchip {
   background: #f1f5f9;
   padding: 6px 10px;
@@ -318,17 +317,17 @@ a {
 .textarea {
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;         /* yuvarlaklık */
+  border-radius: 12px; /* yuvarlaklık */
   padding: 10px 12px;
   background: #fff;
   color: #111827;
   outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .input:focus,
 .textarea:focus {
   border-color: #111827;
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, .1);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
 }
 .input::placeholder,
 .textarea::placeholder {
@@ -400,9 +399,15 @@ a {
 
 /* Responsive */
 @media (max-width: 640px) {
-  .card { padding: 12px; }
-  .actions { justify-content: stretch; }
-  .actions .btn { flex: 1; }
+  .card {
+    padding: 12px;
+  }
+  .actions {
+    justify-content: stretch;
+  }
+  .actions .btn {
+    flex: 1;
+  }
 }
 
 /* Chrome / Edge / Safari */
@@ -433,7 +438,50 @@ input[type="number"] {
 }
 
 /* Kutuların taşmaması için */
-.input, .textarea, .inputgroup .input {
+.input,
+.textarea,
+.inputgroup .input {
   box-sizing: border-box !important;
   width: 100% !important;
 }
+/* Modal base */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: saturate(110%) blur(2px);
+  z-index: 1000;
+}
+.modal-sheet {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 520px);
+  background: #fff;
+  color: #111827;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 16px;
+  z-index: 1001;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 4px 0 8px;
+}
+.modal-body {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 12px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ÖNEMLİ: Kartların içindeki popover'ların kırpılmaması için */
+.card {
+  overflow: visible;
+} /* kartlarınız overflow:hidden ise bu satır şart */

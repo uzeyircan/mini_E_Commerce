@@ -1,4 +1,6 @@
+// src/pages/Cart.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCart } from "@/store/cart";
 import { useProducts } from "@/store/product";
 import { useFavorites } from "@/store/favorites";
@@ -19,22 +21,24 @@ export default function CartPage() {
     () => new Map(products.map((p: any) => [p.id, p])),
     [products]
   );
+
   // Favoriler store
   const addFav = useFavorites((s) => s.add);
   const favItems = useFavorites((s) => s.items);
   const removeFavLocal = useFavorites((s) => s.remove);
-  const fetchFavs = useFavorites((s) => s.fetch); // <-- favorileri yüklemek için
-  //   // Tekli kaldırma modal state
+  const fetchFavs = useFavorites((s) => s.fetch);
+
+  // Tekli kaldırma modal state
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const closeConfirm = () => setConfirmId(null);
 
   // ⚠️ Auth hidrasyonu tamamlanmadan veri çekme!
   useEffect(() => {
-    if (!isHydrated) return; // auth durumu netleşmeden hiçbir çağrı yapma
-    if (!user) return; // (cart route zaten protected ama yine de koruyalım)
+    if (!isHydrated) return;
+    if (!user) return;
     fetch().catch(console.error);
     fetchProducts().catch(console.error);
-    fetchFavs?.().catch?.(console.error); // <-- favorileri de çek!
+    fetchFavs?.().catch?.(console.error);
   }, [isHydrated, user, fetch, fetchProducts, fetchFavs]);
 
   // seçim state'i
@@ -127,7 +131,7 @@ export default function CartPage() {
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
 
-  // ⛔ Auth henüz netleşmediyse hiçbir şey gösterme (skeleton koymak istersen burası)
+  // ⛔ Auth henüz netleşmediyse hiçbir şey gösterme
   if (!isHydrated) {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
@@ -136,7 +140,7 @@ export default function CartPage() {
     );
   }
 
-  // 👤 Misafir ise: login'e yönlendirme YOK; sade bilgilendirme
+  // 👤 Misafir ise
   if (!user) {
     return (
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
@@ -152,7 +156,7 @@ export default function CartPage() {
       <div style={{ maxWidth: 1120, margin: "24px auto", padding: "0 16px" }}>
         <h1>Sepet</h1>
         <p className="muted">Sepetiniz boş.</p>
-        {/* Boş sepet görünümünde de Favoriler */}
+
         <FavoritesSection
           favs={favItems}
           removeFav={removeFavLocal}
@@ -234,7 +238,7 @@ export default function CartPage() {
       </div>
 
       {/* tablo */}
-      <div className="card" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: 0, overflow: "visible" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -397,6 +401,24 @@ export default function CartPage() {
         }}
       />
 
+      {/* Modal stilleri (istersen global.css'e taşı) */}
+      <style>{`
+        .modal__backdrop{
+          position:fixed; inset:0;
+          background:rgba(15,23,42,.45);
+          backdrop-filter:saturate(110%) blur(2px);
+          z-index:1000;
+        }
+        .cart-modal{
+          position:fixed; top:50%; left:50%;
+          transform:translate(-50%,-50%);
+          width:min(92vw, 520px);
+          background:#fff; color:#111827;
+          border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+          padding:16px; z-index:1001;
+        }
+      `}</style>
+
       {/* Modallar */}
       {confirmId && (
         <ConfirmRemoveModal
@@ -422,7 +444,7 @@ export default function CartPage() {
   );
 }
 
-/* ----------------- Alt Bileşenler (aynı kaldı) ----------------- */
+/* ----------------- Alt Bileşenler ----------------- */
 
 function FavoritesSection({
   favs,
@@ -437,7 +459,6 @@ function FavoritesSection({
     string,
     { id: string; title?: string; price?: number; image?: string | null }
   >;
-
   cartItems: Array<{ product_id: string; qty: number }>;
   onAddToCart: (productId: string) => void;
 }) {
@@ -571,14 +592,10 @@ function ConfirmRemoveModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
-    <div
-      className="modal__backdrop"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <>
+      <div className="modal__backdrop" onClick={onClose} />
+      <div className="cart-modal" role="dialog" aria-modal="true">
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {image && (
             <img
@@ -624,7 +641,8 @@ function ConfirmRemoveModal({
           </button>
         </div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
 
@@ -647,14 +665,10 @@ function ConfirmBulkRemoveModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
-    <div
-      className="modal__backdrop"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div className="cart-modal" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <>
+      <div className="modal__backdrop" onClick={onClose} />
+      <div className="cart-modal" role="dialog" aria-modal="true">
         <h3 style={{ marginTop: 0 }}>Seçilenleri Kaldır</h3>
         <p style={{ marginTop: 8, color: "#374151" }}>
           {count} ürün kaldırılacak. Toplam{" "}
@@ -685,6 +699,7 @@ function ConfirmBulkRemoveModal({
           </button>
         </div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 }

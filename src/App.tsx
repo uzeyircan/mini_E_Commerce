@@ -1,8 +1,12 @@
+// src/App.tsx
 import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 import "./styles/global.css";
+
 import Header from "@/components/Header";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuth } from "@/store/auth";
+
 import Shop from "@/pages/Shop";
 import CartPage from "@/pages/Cart";
 import ProductDetail from "@/pages/ProductDetail";
@@ -11,8 +15,8 @@ import ProfilePage from "@/pages/Profile";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AdminDashboard from "@/pages/AdminDashboard";
-import { useEffect } from "react";
-import { RequireAdmin } from "./routes/guards";
+import AuthCallback from "@/pages/AuthCallback";
+import ResetPassword from "@/pages/ResetPassword";
 
 function NotFound() {
   return <div style={{ padding: 24 }}>Sayfa bulunamadı.</div>;
@@ -20,10 +24,10 @@ function NotFound() {
 
 export default function App() {
   const initialize = useAuth((s) => s.initialize);
-  const isHydrated = useAuth((s) => s.isHydrated); // ← auth durumu netleşti mi?
+  const isHydrated = useAuth((s) => s.isHydrated);
 
   useEffect(() => {
-    initialize(); // sayfa yenilense bile kullanıcıyı tekrar yükler
+    initialize();
   }, [initialize]);
 
   // Auth hidrasyonu tamamlanana kadar ProtectedRoute tetiklenmesin
@@ -42,6 +46,18 @@ export default function App() {
     <>
       <Header />
       <Routes>
+        {/* Genel */}
+        <Route path="/" element={<Shop />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+
+        {/* Auth */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        {/* E-posta doğrulama dönüşü ve şifre sıfırlama sayfaları */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/reset" element={<ResetPassword />} />
+
+        {/* Giriş zorunlu sayfalar */}
         <Route
           path="/profile"
           element={
@@ -50,13 +66,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        {/* Ürün listesi */}
-        <Route path="/" element={<Shop />} />
-
-        {/* Ürün detay */}
-        <Route path="/product/:id" element={<ProductDetail />} />
-
-        {/* Sepet (giriş zorunlu) */}
         <Route
           path="/cart"
           element={
@@ -65,8 +74,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Favoriler (giriş zorunlu) */}
         <Route
           path="/favorites"
           element={
@@ -76,11 +83,7 @@ export default function App() {
           }
         />
 
-        {/* Auth */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-        {/* Admin (rol: admin) */}
+        {/* Admin (sadece admin rolü görür) */}
         <Route
           path="/admin"
           element={
@@ -89,10 +92,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
-        <Route element={<RequireAdmin />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Route>
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

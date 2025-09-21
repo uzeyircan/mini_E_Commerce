@@ -1,16 +1,18 @@
+// src/pages/Shop.tsx
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useProducts } from "@/store/product";
 import { useCart } from "@/store/cart";
 import { useFavorites } from "@/store/favorites";
 import { useAuth } from "@/store/auth";
+import { useCategories } from "@/store/category";
 import FadeIn from "@/components/anim/FadeIn";
 import Aurora from "@/components/anim/Aurora";
-import { useCategories } from "@/store/category";
 
 export default function Shop() {
   const { items, fetch } = useProducts();
   const { add } = useCart();
+
   const favs = useFavorites((s) => s.items);
   const addFav = useFavorites((s) => s.add);
   const removeFav = useFavorites((s) => s.remove);
@@ -24,16 +26,21 @@ export default function Shop() {
   const loc = useLocation();
   const [bouncingId, setBouncingId] = useState<string | null>(null);
 
+  // Ürünler
   useEffect(() => {
     fetch().catch(console.error);
   }, [fetch]);
 
-  useEffect(() => {
-    if (user) fetchFavs().catch(console.error);
-  }, [user, fetchFavs]);
+  // Kategoriler (etiket göstermek için)
   useEffect(() => {
     fetchCats().catch(console.error);
   }, [fetchCats]);
+
+  // Favoriler sadece kullanıcı varken çekilir
+  useEffect(() => {
+    if (user) fetchFavs().catch(console.error);
+  }, [user, fetchFavs]);
+
   const requireAuth = () => {
     if (!user) {
       alert("Lütfen giriş yapınız / kayıt olunuz.");
@@ -49,12 +56,12 @@ export default function Shop() {
     setBouncingId(p.id);
     setTimeout(() => setBouncingId(null), 300);
   };
-  // Remove this block, as 'p' is not defined in this scope
-  async function toggleFav(productId: string) {
+
+  const toggleFav = async (productId: string) => {
     if (requireAuth()) return;
     if (favs[productId]) await removeFav(productId);
     else await addFav({ product_id: productId });
-  }
+  };
 
   if (!items.length) {
     return (
@@ -71,7 +78,6 @@ export default function Shop() {
   }
 
   return (
-    // ✅ YENİ: Aurora için konum bağlamı
     <div
       style={{
         maxWidth: 1120,
@@ -80,24 +86,23 @@ export default function Shop() {
         position: "relative",
       }}
     >
-      {/* ✅ YENİ: Sadece arka plan animasyonu (içeriğe dokunmaz) */}
+      {/* Arka plan animasyonu (içeriğe dokunmaz) */}
       <Aurora />
 
-      {/* ✅ YENİ: Başlık için yumuşak giriş */}
       <FadeIn y={18}>
         <h1>Mağaza</h1>
       </FadeIn>
 
-      {/* ✅ YENİ: Grid tümü hafif fade-in; kartlar ayrıca tek tek animasyonlu */}
       <FadeIn delay={0.04} y={12}>
         <div className="grid">
           {items.map((p, i) => {
             const isFav = !!favs[p.id];
-            const catName = p.category_id
-              ? cats[p.category_id]?.name
-              : undefined;
+            // Kategori adı: JOIN'den geldiyse p.category_name, yoksa sözlükten
+            const catName =
+              p.category_name ??
+              (p.category_id ? cats[p.category_id]?.name : undefined);
+
             return (
-              // ✅ YENİ: Her kart sırayla içeri aksın
               <FadeIn key={p.id} delay={i * 0.04} y={14}>
                 <article className="card" style={{ display: "grid", gap: 8 }}>
                   <Link
@@ -130,13 +135,18 @@ export default function Shop() {
                         Görsel yok
                       </div>
                     )}
+
                     <strong
                       style={{ fontSize: 16, display: "block", marginTop: 6 }}
                     >
                       {p.title}
                     </strong>
+
                     {catName && (
                       <span
+                        className="muted"
+                        aria-label="Ürün kategorisi"
+                        title={`Kategori: ${catName}`}
                         style={{
                           display: "inline-block",
                           marginTop: 4,
@@ -146,9 +156,6 @@ export default function Shop() {
                           borderRadius: 999,
                           border: "1px solid #334",
                         }}
-                        className="muted"
-                        aria-label="Ürün kategorisi"
-                        title={`Kategori: ${catName}`}
                       >
                         {catName}
                       </span>
@@ -172,7 +179,7 @@ export default function Shop() {
                     <button
                       className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
                       onClick={() => toggleFav(p.id)}
-                      title={isFav ? "Favorilerden çıkar " : "Favorilere ekle"}
+                      title={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
                     >
                       <span
                         style={{

@@ -10,7 +10,7 @@ export type Product = {
   stock?: number | null;
   description?: string | null;
   category_id?: string | null;
-  category_name?: string | null; // JOIN doldurur
+  category_name?: string | null; // JOIN ile doldurulur (categories.name)
 };
 
 type State = {
@@ -21,7 +21,7 @@ type State = {
   remove: (id: string) => Promise<void>;
 };
 
-// Supabase satırını tipimize dönüştürmek için küçük yardımcı
+// Supabase satırını tipimize dönüştür
 function mapRowToProduct(row: any): Product {
   return {
     id: row.id,
@@ -31,11 +31,11 @@ function mapRowToProduct(row: any): Product {
     stock: row.stock ?? null,
     description: row.description ?? null,
     category_id: row.category_id ?? null,
-    category_name: row.categories?.name ?? null, // ilişkiden gelen ad
+    category_name: row.categories?.name ?? null,
   };
 }
 
-// Ürüne yazılabilir alanları süzen yardımcı (DB insert/update için)
+// DB'ye yazılabilir alanları süz
 function toWritable(p: Partial<Product>) {
   return {
     title: p.title,
@@ -50,7 +50,7 @@ function toWritable(p: Partial<Product>) {
 export const useProducts = create<State>((set, get) => ({
   items: [],
 
-  // Ürünleri kategori ile beraber çek
+  // Ürünleri kategori adıyla birlikte getir
   fetch: async () => {
     const { data, error } = await supabase
       .from("products")
@@ -61,25 +61,25 @@ export const useProducts = create<State>((set, get) => ({
       `
       )
       .order("created_at", { ascending: false });
+
     if (error) throw error;
 
-    const items = (data ?? []).map(mapRowToProduct);
-    set({ items });
+    set({ items: (data ?? []).map(mapRowToProduct) });
   },
 
-  // Ürün ekle (category_id dahil), eklenen kaydı JOIN ile geri al
+  // Ürün ekle (yalnızca yazılabilir alanları gönder) ve eklenen kaydı JOIN ile çek
   add: async (p) => {
-    const payload = toWritable(p); // ✅ filtrele
+    const payload = toWritable(p); // ⬅️ önemli: p değil payload gönder
     const { data, error } = await supabase
       .from("products")
-      .insert(p)
+      .insert(payload)
       .select(
         `
-      id, title, price, image, stock, description, category_id,
-      categories ( name )
-    `
+        id, title, price, image, stock, description, category_id,
+        categories ( name )
+      `
       )
-      .maybeSingle(); // ✅ single yerine
+      .maybeSingle(); // bazı ortamlarda satır dönmeyebilir
 
     if (error) throw error;
 
@@ -87,15 +87,14 @@ export const useProducts = create<State>((set, get) => ({
       const inserted = mapRowToProduct(data);
       set({ items: [inserted, ...get().items] });
     } else {
-      // ✅ Her ihtimale karşı listeyi tazele
+      // temkinli senkronizasyon
       await get().fetch();
     }
   },
 
-  // Ürün güncelle (category_id dahil), güncellenen kaydı JOIN ile geri al
+  // Ürün güncelle ve güncellenen kaydı JOIN ile geri al
   update: async (id, p) => {
     const payload = toWritable(p);
-
     const { data, error } = await supabase
       .from("products")
       .update(payload)
@@ -106,14 +105,16 @@ export const useProducts = create<State>((set, get) => ({
         categories ( name )
       `
       )
-      .single();
+      .maybeSingle(); // .single() yerine .maybeSingle() daha güvenli
 
     if (error) throw error;
 
-    const updated = mapRowToProduct(data);
-    set({
-      items: get().items.map((x) => (x.id === id ? updated : x)),
-    });
+    if (data) {
+      const updated = mapRowToProduct(data);
+      set({ items: get().items.map((x) => (x.id === id ? updated : x)) });
+    } else {
+      await get().fetch();
+    }
   },
 
   remove: async (id) => {

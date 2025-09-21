@@ -1,3 +1,4 @@
+// src/pages/Profile.tsx
 import { useEffect, useState } from "react";
 import {
   MDBCol,
@@ -19,7 +20,7 @@ type ProfileRow = {
   user_id: string;
   display_name?: string | null;
   avatar_url?: string | null;
-  username?: string | null; // @kullanici
+  username?: string | null;
   website?: string | null;
   wallets_balance?: number | null;
   followers?: number | null;
@@ -31,11 +32,19 @@ type ProfileRow = {
 };
 
 export default function ProfilePage() {
-  const { user, isHydrated } = useAuth(); // id / email / role bizde store’da vardı
+  const { user, isHydrated, refresh, logout } = useAuth();
   const [p, setP] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
 
-  if (!isHydrated) return null; // <- hydrate bitmeden karar verme
+  // auth hidrasyonu bitmeden render etme
+  if (!isHydrated) return null;
+
+  // Sayfaya girince hem profili çek hem de store'daki rolü tazele
+  useEffect(() => {
+    (async () => {
+      await refresh().catch(console.error);
+    })();
+  }, [refresh]);
 
   useEffect(() => {
     if (!user) return;
@@ -45,7 +54,7 @@ export default function ProfilePage() {
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       if (!error) setP(data as ProfileRow);
       setLoading(false);
     })();
@@ -65,8 +74,18 @@ export default function ProfilePage() {
 
   const displayName =
     p?.display_name || user.email?.split("@")[0] || "Kullanıcı";
-  const username = p?.username ? `@${p.username}` : "@user";
-  const website = p?.website || "#";
+
+  // Admin kontrolünü hem store hem DB üzerinden yap
+  const isAdmin =
+    user?.role?.toLowerCase() === "admin" || p?.role?.toLowerCase() === "admin";
+
+  {
+    isAdmin && (
+      <Link to="/admin" className="btn btn--primary">
+        Admin Paneline Git
+      </Link>
+    );
+  }
 
   return (
     <div className="vh-100" style={{ backgroundColor: "#eee" }}>
@@ -87,22 +106,32 @@ export default function ProfilePage() {
 
                 <MDBTypography tag="h4">
                   {displayName}{" "}
-                  {user.role === "admin" && (
+                  {isAdmin && (
                     <span style={{ fontSize: 12, opacity: 0.7 }}>(admin)</span>
                   )}
                 </MDBTypography>
 
-                <MDBCardText className="text-muted mb-4">
-                  {user?.role === "admin" && (
-                    <div style={{ marginTop: 30 }}>
-                      <Link to="/admin" className="btn btn--primary">
-                        Admin Paneline Git
-                      </Link>
-                    </div>
-                  )}
+                {/* Tanı koymaya yarayan küçük bilgi – istersen kaldır */}
+                <MDBCardText className="text-muted" style={{ marginTop: 4 }}>
+                  rol: {user.role}
                 </MDBCardText>
 
-                <div className="mb-4 pb-2">
+                {/* Admin butonu */}
+                {isAdmin && (
+                  <div style={{ marginTop: 20 }}>
+                    <Link to="/admin" className="btn btn--primary">
+                      Admin Paneline Git
+                    </Link>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 16 }}>
+                  <button className="btn btn--ghost" onClick={() => logout()}>
+                    Çıkış Yap
+                  </button>
+                </div>
+
+                <div className="mb-4 pb-2" style={{ marginTop: 20 }}>
                   {p?.facebook && (
                     <MDBBtn
                       outline

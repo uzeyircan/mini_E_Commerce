@@ -1,5 +1,5 @@
 // src/components/ProductForm.tsx
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Product, useProducts } from "@/store/product";
 import { useCategories } from "@/store/category";
 
@@ -39,6 +39,7 @@ export default function ProductForm({ edit, onDone }: Props) {
       setStock(edit.stock ?? "");
       setDescription(edit.description || "");
       const nameFromJoin = edit.category_name || "";
+      // eğer join yoksa id→ad sözlüğünden doldur
       const nameFromId = edit.category_id
         ? cats[edit.category_id]?.name || ""
         : "";
@@ -53,8 +54,27 @@ export default function ProductForm({ edit, onDone }: Props) {
     }
   }, [edit, cats]);
 
-  const submitDisabled =
-    loading || !title.trim() || price === "" || Number(price) < 0;
+  // Basic doğrulamalar
+  const priceNumber = useMemo(
+    () => (price === "" ? NaN : Number(price)),
+    [price]
+  );
+  const isTitleValid = title.trim().length > 0;
+  const isPriceValid = !Number.isNaN(priceNumber) && priceNumber >= 0;
+
+  const submitDisabled = loading || !isTitleValid || !isPriceValid;
+
+  // Yardımcı: virgülü noktaya çevirerek sayı yazımını kolaylaştır
+  const handlePriceChange = (raw: string) => {
+    const fixed = raw.replace(",", "."); // 12,5 -> 12.5
+    if (fixed === "") {
+      setPrice("");
+      return;
+    }
+    const num = Number(fixed);
+    if (Number.isNaN(num)) return; // geçersiz girişi yoksay
+    setPrice(num);
+  };
 
   // Form submit yerine buton tıklamasıyla yönetiyoruz (daha deterministik)
   async function handleSave(e?: FormEvent) {
@@ -77,11 +97,12 @@ export default function ProductForm({ edit, onDone }: Props) {
 
     const payload: Omit<Product, "id"> = {
       title: title.trim(),
-      price: Number(price),
-      image: image.trim() || null,
+      price: Number(priceNumber.toFixed(2)), // fiyatı 2 ondalığa normalize et
+      image: image.trim() ? image.trim() : null,
       stock: stock === "" ? null : Number(stock),
-      description: description.trim() || null,
+      description: description.trim() ? description.trim() : null,
       category_id,
+      // category_name göndermiyoruz (DB kolonu değil)
     };
 
     setLoading(true);
@@ -90,7 +111,7 @@ export default function ProductForm({ edit, onDone }: Props) {
     const safety = setTimeout(() => {
       setLoading(false);
       alert("İstek gecikti. Lütfen tekrar deneyin.");
-    }, 8000);
+    }, 10000);
 
     try {
       if (edit) {
@@ -137,12 +158,16 @@ export default function ProductForm({ edit, onDone }: Props) {
           Başlık <span className="req">*</span>
         </label>
         <input
-          className="input"
+          className={`input`}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Örn: Basic T-Shirt"
         />
-        <small className="help">Kısa, açıklayıcı bir isim kullanın.</small>
+        {!isTitleValid && (
+          <small className="help" style={{ color: "#c00" }}>
+            Başlık zorunludur.
+          </small>
+        )}
       </div>
 
       {/* Fiyat */}
@@ -154,20 +179,22 @@ export default function ProductForm({ edit, onDone }: Props) {
           <span className="adorn-left">₺</span>
           <input
             className="input input--adorn-left"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             inputMode="decimal"
-            value={price}
-            onChange={(e) =>
-              setPrice(e.target.value === "" ? "" : Number(e.target.value))
-            }
+            value={price === "" ? "" : String(price)}
+            onChange={(e) => handlePriceChange(e.target.value)}
             placeholder="0.00"
           />
         </div>
-        <small className="help">
-          Ondalık için nokta/virgül kullanabilirsiniz.
-        </small>
+        {!isPriceValid ? (
+          <small className="help" style={{ color: "#c00" }}>
+            Lütfen 0 veya daha büyük geçerli bir fiyat giriniz.
+          </small>
+        ) : (
+          <small className="help">
+            Ondalık için nokta/virgül kullanabilirsiniz.
+          </small>
+        )}
       </div>
 
       {/* Görsel URL */}
@@ -194,7 +221,9 @@ export default function ProductForm({ edit, onDone }: Props) {
           min="0"
           value={stock}
           onChange={(e) =>
-            setStock(e.target.value === "" ? "" : Number(e.target.value))
+            setStock(
+              e.target.value === "" ? "" : Math.max(0, Number(e.target.value))
+            )
           }
           placeholder="Örn: 20"
         />
@@ -257,6 +286,7 @@ export default function ProductForm({ edit, onDone }: Props) {
           className="btn btn--primary"
           onClick={handleSave}
           disabled={submitDisabled}
+          title={submitDisabled ? "Başlık ve fiyat zorunludur." : "Kaydet"}
         >
           {loading
             ? edit

@@ -1,16 +1,18 @@
-// src/store/auth.ts
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 
-type Role = "user" | "admin";
-type User = { id: string; email: string; role: Role };
+export type Role = "user" | "admin";
+export type User = { id: string; email: string; role: Role };
 
 type AuthState = {
   isHydrated: boolean;
   user: User | null;
+  refresh: () => Promise<void>;
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  sendResetEmail: (email: string) => Promise<void>;
+  completeReset: (newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -29,12 +31,13 @@ async function fetchProfileRole(userId: string): Promise<Role> {
   return raw === "admin" ? "admin" : "user";
 }
 
-// Profil satırını garanti altına al (yoksa oluştur)
 async function ensureProfileExists(userId: string, email: string | null) {
-  const { error } = await supabase.from("profiles").upsert(
-    { user_id: userId, email: email ?? null }, // ✅ user_id
-    { onConflict: "user_id" } // ✅ user_id
-  );
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(
+      { user_id: userId, email: email ?? null },
+      { onConflict: "user_id" }
+    );
   if (error) console.warn("[auth] ensureProfileExists:", error);
 }
 
@@ -70,6 +73,18 @@ export const useAuth = create<AuthState>((set) => ({
       }
     });
   },
+  refresh: async () => {
+    const { data } = await supabase.auth.getSession();
+    const sess = data.session;
+    if (!sess) return set({ user: null, isHydrated: true });
+
+    await ensureProfileExists(sess.user.id, sess.user.email ?? null);
+    const role = await fetchProfileRole(sess.user.id);
+    set({
+      user: { id: sess.user.id, email: sess.user.email!, role },
+      isHydrated: true,
+    });
+  },
 
   login: async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -80,7 +95,9 @@ export const useAuth = create<AuthState>((set) => ({
     if (error) {
       const raw = (error.message || "").toLowerCase();
       if (raw.includes("confirm")) {
-        alert("E-posta doğrulanmamış. Lütfen e-postanı doğrula.");
+        alert(
+          "E-posta doğrulanmamış. Lütfen e-postanı doğrula (Spam klasörünü de kontrol et)."
+        );
       } else {
         alert("E-posta veya şifre hatalı.");
       }
@@ -103,7 +120,7 @@ export const useAuth = create<AuthState>((set) => ({
     if (error) {
       const raw = (error.message || "").toLowerCase();
       if (raw.includes("already") || raw.includes("registered")) {
-        alert("Bu e-posta ile zaten kayıt var. Lütfen giriş yapın.");
+        alert("Bu e-posta zaten kayıtlı. Lütfen giriş yapın.");
       } else {
         alert(error.message || "Kayıt sırasında bir hata oluştu.");
       }
@@ -120,13 +137,42 @@ export const useAuth = create<AuthState>((set) => ({
     set({ user: { id: sUser.id, email: sUser.email!, role: "user" } });
   },
 
+  sendResetEmail: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    if (error) {
+      alert(error.message || "Şifre sıfırlama e-postası gönderilemedi.");
+      return;
+    }
+    alert("Şifre sıfırlama bağlantısı e-postanıza gönderildi.");
+  },
+
+  completeReset: async (newPassword) => {
+    // Get the auth code from the URL query string
+    const params = new URLSearchParams(window.location.search);
+    const authCode = params.get("code");
+    if (!authCode) {
+      alert("Şifre sıfırlama kodu bulunamadı.");
+      return;
+    }
+    await supabase.auth.exchangeCodeForSession(authCode).catch(() => {});
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) {
+      alert(error.message || "Şifre güncellenemedi.");
+      return;
+    }
+    const sUser = data.user!;
+    await ensureProfileExists(sUser.id, sUser.email ?? null);
+    const role = await fetchProfileRole(sUser.id);
+    set({ user: { id: sUser.id, email: sUser.email!, role } });
+    alert("Şifreniz güncellendi. Giriş yapabilirsiniz.");
+  },
+
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null });
   },
 }));
-
-export async function getToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
