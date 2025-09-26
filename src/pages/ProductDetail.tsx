@@ -4,6 +4,7 @@ import { useProducts } from "@/store/product";
 import { useAuth } from "@/store/auth";
 import { useCart } from "@/store/cart";
 import { useComments } from "@/store/comments";
+import { supabase } from "@/lib/supabase"; // ✅ EKLENDİ: stok düşürme için RPC
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +50,7 @@ export default function ProductDetail() {
     );
   }
 
+  // ✅ stok bitik mi?
   const isOutOfStock = typeof product.stock === "number" && product.stock <= 0;
 
   const requireAuth = () => {
@@ -62,15 +64,47 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (requireAuth()) return;
+    if (isOutOfStock) {
+      alert("Bu ürün stokta olmadığı için sepete eklenemez.");
+      return;
+    }
     add({ id: product.id, title: product.title, price: product.price }, 1);
     setBounce(true);
     setTimeout(() => setBounce(false), 300);
   };
 
-  const handleBuyNow = () => {
+  // ✅ SATIN AL → stok 1 düşür, ardından ürünleri yenile
+  const handleBuyNow = async () => {
     if (requireAuth()) return;
-    // Demo akış (ödeme yok)
+    if (isOutOfStock) {
+      alert("Ürün stokta yok.");
+      return;
+    }
+
+    // Supabase RPC: decrement_stock(p_id uuid, p_qty integer)
+    const { error } = await supabase.rpc("decrement_stock", {
+      p_id: product.id,
+      p_qty: 1,
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Satın alma sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
+      return;
+    }
+
+    // Yeniden yükleyelim ki anlık stok güncellensin
+    await fetchProducts().catch(console.error);
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
+  };
+
+  // ✅ stok bittiğinde görünen “Geldiğinde haber ver”
+  const handleNotifyMe = () => {
+    if (requireAuth()) return;
+    // demo
+    alert(
+      "Bildirim isteği alındı. Stok eklendiğinde e-posta ile haberdar edeceğiz. (Demo)"
+    );
   };
 
   const canEditOrDelete = (authorEmail?: string) =>
@@ -178,13 +212,17 @@ export default function ProductDetail() {
               >
                 Sepete Ekle
               </button>
-              <button
-                className="btn btn--primary"
-                onClick={handleBuyNow}
-                disabled={isOutOfStock}
-              >
-                Satın Al
-              </button>
+
+              {/* ✅ Stok durumuna göre buton değişiyor */}
+              {isOutOfStock ? (
+                <button className="btn btn--primary" onClick={handleNotifyMe}>
+                  Geldiğinde haber ver
+                </button>
+              ) : (
+                <button className="btn btn--primary" onClick={handleBuyNow}>
+                  Satın Al
+                </button>
+              )}
             </div>
           </div>
         </div>

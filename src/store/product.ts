@@ -1,6 +1,7 @@
 // src/store/product.ts
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
+import { PostgrestError } from "@supabase/supabase-js";
 
 export type Product = {
   id: string;
@@ -19,6 +20,9 @@ type State = {
   add: (p: Omit<Product, "id">) => Promise<void>;
   update: (id: string, p: Partial<Product>) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  decrementStockBulk: (
+    pairs: Array<{ id: string; qty: number }>
+  ) => Promise<void>;
 };
 
 // Supabase satırını tipimize dönüştür
@@ -121,5 +125,16 @@ export const useProducts = create<State>((set, get) => ({
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) throw error;
     set({ items: get().items.filter((x) => x.id !== id) });
+  },
+  decrementStockBulk: async (pairs: Array<{ id: string; qty: number }>) => {
+    for (const { id, qty } of pairs) {
+      const { error } = await supabase.rpc("decrement_stock", {
+        pid: id,
+        pqty: qty,
+      });
+      if (error) throw error as PostgrestError;
+    }
+    // listeyi tazele
+    await get().fetch();
   },
 }));

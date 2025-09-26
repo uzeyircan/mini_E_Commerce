@@ -119,15 +119,24 @@ export default function CartPage() {
     setSelected({});
     setBulkOpen(false);
   };
-
-  // Satın alma simülasyonu
   const onPurchase = async () => {
     if (selectedItems.length === 0) {
       alert("Satın almak için en az bir ürünü seçin.");
       return;
     }
+
+    // 1) Stoğu düşür
+    await decrementStockBulk(
+      selectedItems.map((i) => ({
+        id: i.product_id,
+        qty: Number(i.qty ?? 1),
+      }))
+    );
+
+    // 2) Sepetten çıkar
     await removeMany(selectedItems.map((i) => i.product_id));
     setSelected({});
+
     alert("Satın alma işlemi başarıyla tamamlandı! 🎉");
   };
 
@@ -702,4 +711,7 @@ function ConfirmBulkRemoveModal({
     </>,
     document.body
   );
+}
+function decrementStockBulk(arg0: { id: string; qty: number }[]) {
+  throw new Error("Function not implemented.");
 }
