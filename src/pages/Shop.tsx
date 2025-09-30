@@ -11,13 +11,18 @@ import Aurora from "@/components/anim/Aurora";
 
 export default function Shop() {
   const { items, fetch } = useProducts();
-  const { add } = useCart();
 
+  // Sepet: ekleme + mevcut sepettekileri okumak için
+  const addToCart = useCart((s) => s.add);
+  const cartItems = useCart((s) => s.items);
+
+  // Favoriler
   const favs = useFavorites((s) => s.items);
   const addFav = useFavorites((s) => s.add);
   const removeFav = useFavorites((s) => s.remove);
   const fetchFavs = useFavorites((s) => s.fetch);
 
+  // Kategoriler (etiket göstermek için)
   const cats = useCategories((s) => s.items);
   const fetchCats = useCategories((s) => s.fetch);
 
@@ -31,7 +36,7 @@ export default function Shop() {
     fetch().catch(console.error);
   }, [fetch]);
 
-  // Kategoriler (etiket göstermek için)
+  // Kategoriler
   useEffect(() => {
     fetchCats().catch(console.error);
   }, [fetchCats]);
@@ -52,7 +57,7 @@ export default function Shop() {
 
   const handleAdd = (p: { id: string; title: string; price: number }) => {
     if (requireAuth()) return;
-    add({ id: p.id, title: p.title, price: p.price }, 1);
+    addToCart({ id: p.id, title: p.title, price: p.price }, 1);
     setBouncingId(p.id);
     setTimeout(() => setBouncingId(null), 300);
   };
@@ -97,6 +102,8 @@ export default function Shop() {
         <div className="grid">
           {items.map((p, i) => {
             const isFav = !!favs[p.id];
+            const inCart = cartItems.some((ci) => ci.product_id === p.id);
+
             // Kategori adı: JOIN'den geldiyse p.category_name, yoksa sözlükten
             const catName =
               p.category_name ??
@@ -168,40 +175,23 @@ export default function Shop() {
                     style={{ display: "flex", gap: 8, alignItems: "center" }}
                   >
                     <button
-                      className={`btn btn--primary ${
+                      className={`btn btn--cart ${
                         bouncingId === p.id ? "button-bounce" : ""
                       }`}
                       onClick={() => handleAdd(p)}
                     >
-                      Sepete Ekle
+                      {inCart ? "Sepette" : "Sepete Ekle"}
                     </button>
 
                     <button
-                      className={`btn btn--ghost ${isFav ? "is-fav" : ""}`}
+                      className={`btn--fav ${isFav ? "is-active" : ""}`}
                       onClick={() => toggleFav(p.id)}
+                      aria-label={
+                        isFav ? "Favorilerden çıkar" : "Favorilere ekle"
+                      }
                       title={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
                     >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          gap: 6,
-                          alignItems: "center",
-                        }}
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          aria-hidden
-                        >
-                          <path
-                            fill={isFav ? "currentColor" : "none"}
-                            stroke="currentColor"
-                            d="M12.1 21.35l-1.1-1.02C5.14 15.24 2 12.39 2 8.92A4.92 4.92 0 016.92 4c1.54 0 3.04.7 4.08 1.8A5.56 5.56 0 0115.08 4 4.92 4.92 0 0120 8.92c0 3.47-3.14 6.32-8.01 11.41l-.89 1.02z"
-                          />
-                        </svg>
-                        {isFav ? "Favoride" : "Favorile"}
-                      </span>
+                      {isFav ? "❤️" : "🤍"}
                     </button>
                   </div>
                 </article>

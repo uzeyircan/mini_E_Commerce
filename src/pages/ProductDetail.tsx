@@ -219,7 +219,7 @@ export default function ProductDetail() {
                   Geldiğinde haber ver
                 </button>
               ) : (
-                <button className="btn btn--primary" onClick={handleBuyNow}>
+                <button className="btn btn--buy" onClick={handleBuyNow}>
                   Satın Al
                 </button>
               )}
