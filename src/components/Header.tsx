@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useCart } from "@/store/cart";
 import { useAuth } from "@/store/auth";
 import { useFavorites } from "@/store/favorites";
@@ -21,27 +21,47 @@ export default function Header() {
   const [openMobile, setOpenMobile] = useState(false);
   const [openFav, setOpenFav] = useState(false);
 
+  // Popover odak yönetimi
+  const favBtnRef = useRef<HTMLAnchorElement | null>(null);
+  const favPopRef = useRef<HTMLDivElement | null>(null);
+  const firstFavFocusable = useRef<HTMLAnchorElement | null>(null);
+
+  // sayfa/rota değişince menüleri kapat (desktopu etkilemez)
+  const loc = useLocation();
+  useEffect(() => {
+    setOpenMobile(false);
+    setOpenFav(false);
+  }, [loc]);
+
+  // auth -> sepet yerelleştirme
   useEffect(() => {
     if (!isHydrated) return;
     if (user) fetch().catch(console.error);
     else clearLocal();
   }, [isHydrated, user, fetch, clearLocal]);
 
-  // route değişince menüleri kapat
+  // mobil açıkken body scroll kilidi
   useEffect(() => {
-    const close = () => {
-      setOpenMobile(false);
-      setOpenFav(false);
-    };
-    window.addEventListener("hashchange", close);
-    window.addEventListener("popstate", close);
+    if (openMobile) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => {
-      window.removeEventListener("hashchange", close);
-      window.removeEventListener("popstate", close);
+      document.body.style.overflow = "";
     };
+  }, [openMobile]);
+
+  // ESC ile kapatma
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenMobile(false);
+        setOpenFav(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // Favoriler ve ürünler (popover için gerekli)
+  // Favoriler & ürünler (popover verisi)
   useEffect(() => {
     fetchFavs().catch(() => {});
     fetchProducts().catch(() => {});
@@ -53,7 +73,7 @@ export default function Header() {
     [products]
   );
 
-  // Popover’da göstereceğimiz listeyi zenginleştir
+  // Popover gösterim verisi
   const favList = useMemo(() => {
     const arr = Object.values(favMap);
     return arr.map((f: any) => {
@@ -67,9 +87,7 @@ export default function Header() {
     });
   }, [favMap, productMap]);
 
-  // Kalp popover dışı tıklama ile kapanma
-  const favBtnRef = useRef<HTMLAnchorElement | null>(null);
-  const favPopRef = useRef<HTMLDivElement | null>(null);
+  // Popover dışına tıklayınca kapanma
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -80,6 +98,15 @@ export default function Header() {
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
+  }, [openFav]);
+
+  // Popover açılınca odağı içeri al, kapanınca butona iade et
+  useEffect(() => {
+    if (openFav) {
+      setTimeout(() => firstFavFocusable.current?.focus(), 0);
+    } else {
+      favBtnRef.current?.focus();
+    }
   }, [openFav]);
 
   return (
@@ -96,14 +123,7 @@ export default function Header() {
           miniCommerce
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="nav nav--desktop" aria-label="Primary">
-          <NavLink to="/" end className="nav__link">
-            Mağaza
-          </NavLink>
-        </nav>
-
-        {/* Sağ aksiyonlar */}
+        {/* Sağ aksiyonlar — Desktop görünümünde DEĞİŞMEDİ */}
         <div className="hdr__right">
           {user && (
             <Link to="/profile" className="userchip" title="Profil">
@@ -125,26 +145,32 @@ export default function Header() {
               setOpenMobile(false);
             }}
           >
-            <svg className="fav__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="fav__icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
               <path d="M12.1 21.35l-1.1-.99C5.14 15.36 2 12.5 2 8.92 2 6.2 4.2 4 6.92 4c1.54 0 3.04.7 4.08 1.84A5.53 5.53 0 0 1 15.08 4C17.8 4 20 6.2 20 8.92c0 3.58-3.14 6.44-8.02 11.44l-.88.99z" />
             </svg>
             {favCount > 0 && <span className="fav__badge">{favCount}</span>}
           </a>
 
-          {/* POPOVER */}
           {openFav && (
             <div
               className="fav-popover"
               ref={favPopRef}
               role="dialog"
               aria-label="Favoriler"
+              aria-modal="true"
             >
               <div className="fav-popover__header">
-                <strong>Favoriler</strong>
+                <strong id="fav-popover-title">Favoriler</strong>
                 <Link
                   to="/favorites"
                   className="link"
                   onClick={() => setOpenFav(false)}
+                  ref={firstFavFocusable} // odak başlangıç: artık anchor tipi
                 >
                   Tümünü Gör
                 </Link>
@@ -158,7 +184,7 @@ export default function Header() {
                     <div className="fav-item" key={f.productId}>
                       <div className="fav-item__media">
                         {f.image ? (
-                          <img src={f.image} alt={f.title} />
+                          <img src={f.image} alt={f.title} loading="lazy" />
                         ) : (
                           <div className="img-ph" />
                         )}
@@ -223,12 +249,18 @@ export default function Header() {
             aria-label="Sepet"
             onClick={() => setOpenFav(false)}
           >
-            <svg className="cart__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="cart__icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
               <path d="M7 4h-2l-1 2v2h2l3.6 7.59-1.35 2.44A2 2 0 0 0 10 20h9v-2h-8.42a.25.25 0 0 1-.22-.37L11.1 16h6.55a2 2 0 0 0 1.79-1.11l3.54-7.11A1 1 0 0 0 21 6H7z" />
             </svg>
             {count > 0 && <span className="cart__badge">{count}</span>}
           </Link>
 
+          {/* Hamburger */}
           <button
             className="menu-btn"
             aria-label="Menüyü aç/kapat"
@@ -246,7 +278,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet — masaüstünü etkilemez */}
       <div
         id="mobile-menu"
         className={`mobile ${openMobile ? "mobile--open" : ""}`}
@@ -262,6 +294,7 @@ export default function Header() {
             >
               Mağaza
             </NavLink>
+
             <NavLink
               to="/favorites"
               className="nav__link"
@@ -269,8 +302,20 @@ export default function Header() {
             >
               Favoriler {favCount > 0 ? `(${favCount})` : ""}
             </NavLink>
+
+            {/* Kullanıcı girişi varsa mobil nav’da Profil linki */}
+            {user && (
+              <NavLink
+                to="/profile"
+                className="nav__link"
+                onClick={() => setOpenMobile(false)}
+              >
+                Profil
+              </NavLink>
+            )}
           </nav>
 
+          {/* Giriş/Çıkış alanı */}
           {!user ? (
             <div className="auth auth--mobile">
               <Link
@@ -290,7 +335,16 @@ export default function Header() {
             </div>
           ) : (
             <div className="auth auth--mobile">
-              <span className="userchip userchip--mobile">{user.email}</span>
+              {/* e-posta -> tıklanabilir Profil çipi */}
+              <Link
+                to="/profile"
+                className="userchip userchip--mobile"
+                onClick={() => setOpenMobile(false)}
+                title="Profil"
+              >
+                {user.email}
+              </Link>
+
               <button
                 className="btn btn--ghost"
                 onClick={() => {

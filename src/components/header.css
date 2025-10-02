@@ -1,4 +1,6 @@
-/* Header temel */
+/* =========================
+   Header – Temel Yapı
+   ========================= */
 .hdr {
   position: sticky;
   top: 0;
@@ -6,6 +8,7 @@
   background: #ffffffcc;
   backdrop-filter: blur(8px);
   border-bottom: 1px solid #e5e7eb;
+  padding-top: env(safe-area-inset-top);
 }
 .hdr__inner {
   max-width: 1120px;
@@ -16,7 +19,9 @@
   gap: 12px;
 }
 
-/* Logo */
+/* =========================
+   Logo
+   ========================= */
 .logo {
   font-weight: 800;
   letter-spacing: 0.2px;
@@ -24,7 +29,9 @@
   text-decoration: none;
 }
 
-/* Nav */
+/* =========================
+   Navigasyon
+   ========================= */
 .nav {
   display: flex;
   align-items: center;
@@ -43,7 +50,14 @@
   background: #f3f4f6;
 }
 
-/* Sağ taraf */
+/* Desktop nav varsayılan olarak gizli; breakpoint ile açılacak */
+.nav--desktop {
+  display: none;
+}
+
+/* =========================
+   Sağ Taraf (aksiyonlar)
+   ========================= */
 .hdr__right {
   margin-left: auto;
   display: flex;
@@ -51,12 +65,18 @@
   gap: 10px;
 }
 
-/* Auth */
+/* =========================
+   Auth / Kullanıcı
+   ========================= */
 .auth {
   display: flex;
   gap: 8px;
   align-items: center;
 }
+.auth a {
+  text-decoration: none;
+}
+
 .userchip {
   font-size: 20px;
   padding: 8px 18px;
@@ -65,38 +85,88 @@
   color: #1c3772;
 }
 .userchip--mobile {
-  align-self: flex-start;
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Cart */
+/* =========================
+   Butonlar
+   ========================= */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn--primary {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+.btn--ghost {
+  background: #fff;
+  color: #111827;
+}
+
+/* =========================
+   Sepet & Favori Kapsayıcıları (tekilleştirildi)
+   ========================= */
+.fav,
 .cart {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  background: #fff;
+  margin-left: 8px;
 }
+.fav__icon,
 .cart__icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   fill: currentColor;
-  color: #111827;
+  opacity: 0.9;
 }
+.fav__badge,
 .cart__badge {
   position: absolute;
   top: -6px;
-  right: -8px;
+  right: -6px;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #ef4444;
+  background: #e11d48; /* kırmızı/pembe ton */
   color: #fff;
   font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 600;
 }
 
-/* Hamburger */
+/* Sepet ikon özgünlükleri */
+.cart__icon {
+  width: 24px;
+  height: 24px;
+  color: #111827;
+}
+
+/* =========================
+   Hamburger (mobilde görünür)
+   ========================= */
 .menu-btn {
   display: none;
   width: 38px;
@@ -115,8 +185,13 @@
   border-radius: 2px;
 }
 
-/* Mobile sheet (kapalı) */
+/* =========================
+   Mobil Sheet (Overlay)
+   ========================= */
 .mobile {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease;
@@ -126,158 +201,18 @@
   opacity: 1;
 }
 .mobile__panel {
-  display: none;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  display: none; /* breakpoint'te açılacak */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  padding-top: calc(12px + env(safe-area-inset-top));
   background: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn--primary {
-  background: #111827;
-  color: #fff;
-  border-color: #111827;
-}
-.btn--ghost {
-  background: #fff;
-  color: #111827;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.08);
+  gap: 12px;
 }
 
-/* < 960px: biraz sıkıştır */
-@media (max-width: 960px) {
-  .nav--desktop {
-    display: none;
-  }
-  .menu-btn {
-    display: inline-flex;
-  }
-}
-
-/* < 768px: mobil sheet açılır menü */
-@media (max-width: 768px) {
-  .hdr__inner {
-    gap: 8px;
-  }
-  .auth.auth--out .btn--ghost {
-    display: none; /* mobilde sadece "Giriş Yap" göster */
-  }
-
-  .mobile__panel {
-    display: grid;
-    gap: 12px;
-    background: #fff;
-    border-top: 1px solid #e5e7eb;
-    box-shadow: 0 6px 14px rgba(17, 24, 39, 0.08);
-    padding: 12px 16px 16px;
-  }
-  .nav--mobile {
-    display: grid;
-    gap: 6px;
-  }
-  .nav--mobile .nav__link {
-    padding: 10px 12px;
-    background: #f8fafc;
-  }
-}
-.auth a {
-  text-decoration: none;
-}
-.btn {
-  text-decoration: none;
-}
-/* < 420px: chip ve butonlar daralsın */
-@media (max-width: 420px) {
-  .userchip {
-    display: none;
-  }
-  .btn {
-    padding: 8px 10px;
-  }
-}
-.fav,
-.cart {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  border: 1px solid #eee;
-  background: #fff;
-  margin-left: 8px;
-}
-
-.fav__icon,
-.cart__icon {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-  opacity: 0.9;
-}
-
-.fav__badge,
-.cart__badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #e11d48; /* kırmızı/pembe ton */
-  color: #fff;
-  font-size: 11px;
-  line-height: 18px;
-  text-align: center;
-  font-weight: 600;
-}
-/* Kalp ve sepet kapsayıcıları aynı kalsın */
-.fav,
-.cart {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  border: 1px solid #eee;
-  background: #fff;
-  margin-left: 8px;
-}
-.fav__icon,
-.cart__icon {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-  opacity: 0.9;
-}
-.fav__badge,
-.cart__badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #e11d48;
-  color: #fff;
-  font-size: 11px;
-  line-height: 18px;
-  text-align: center;
-  font-weight: 600;
-}
-
-/* FAVORİLER POPOVER */
+/* =========================
+   Favoriler Popover
+   ========================= */
 .fav-popover {
   position: absolute;
   top: calc(100% + 10px);
@@ -292,14 +227,6 @@
   flex-direction: column;
   z-index: 60;
 }
-@media (max-width: 720px) {
-  .fav-popover {
-    right: 8px;
-    left: 8px;
-    width: auto;
-  }
-}
-
 .fav-popover__header,
 .fav-popover__footer {
   padding: 10px 12px;
@@ -312,18 +239,15 @@
   border-top: 1px solid #f3f3f3;
   border-bottom: none;
 }
-
 .fav-popover__empty {
   padding: 24px 12px;
   color: #666;
   text-align: center;
 }
-
 .fav-popover__list {
   overflow: auto;
   padding: 6px 6px;
 }
-
 .fav-item {
   display: grid;
   grid-template-columns: 56px 1fr 28px;
@@ -335,7 +259,6 @@
 .fav-item:hover {
   background: #fafafa;
 }
-
 .fav-item__media img,
 .img-ph {
   width: 56px;
@@ -358,7 +281,6 @@
   color: #444;
   margin-top: 4px;
 }
-
 .fav-item__remove {
   appearance: none;
   border: 0;
@@ -367,4 +289,85 @@
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
+}
+
+/* =========================
+   Breakpoints
+   ========================= */
+
+/* < 960px: biraz sıkışsın */
+@media (max-width: 960px) {
+  .nav--desktop {
+    display: none;
+  }
+  .menu-btn {
+    display: inline-flex;
+  }
+}
+
+/* < 768px: mobil sheet açılır menü */
+@media (max-width: 768px) {
+  .hdr__inner {
+    gap: 8px;
+  }
+
+  /* mobilde yalnızca "Giriş Yap" göster */
+  .auth.auth--out .btn--ghost {
+    display: none;
+  }
+
+  .mobile__panel {
+    display: grid;
+    padding: 12px 16px 16px;
+  }
+
+  .nav--mobile {
+    display: grid;
+    gap: 6px;
+  }
+  .nav--mobile .nav__link {
+    padding: 10px 12px;
+    background: #f8fafc;
+  }
+}
+
+/* < 720px: popover kenarlara otursun */
+@media (max-width: 720px) {
+  .fav-popover {
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}
+
+/* < 420px: chip ve butonlar daralsın */
+@media (max-width: 420px) {
+  .userchip {
+    display: none;
+  }
+  .btn {
+    padding: 8px 10px;
+  }
+}
+
+/* >= 1024px: masaüstü kuralları */
+@media (min-width: 1024px) {
+  .nav--desktop {
+    display: flex;
+  } /* masaüstünde göster */
+  .menu-btn {
+    display: none;
+  } /* hamburger gizle */
+  .mobile {
+    display: none !important;
+  }
+}
+
+/* =========================
+   Erişilebilirlik / Tercihler
+   ========================= */
+@media (prefers-reduced-motion: reduce) {
+  .mobile {
+    transition: none !important;
+  }
 }
